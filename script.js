@@ -1397,12 +1397,16 @@
       iconContainer.appendChild(iconImg);
       const nameBelowIconSpan = document.createElement('span'); nameBelowIconSpan.className = 'speaker-name-below-icon'; nameBelowIconSpan.textContent = escapeHtml(setting.displayName);
       nameBelowIconSpan.style.color = messageTextColor;
+      nameBelowIconSpan.title = 'クリックして発言者を変更';
+      nameBelowIconSpan.addEventListener('click', (event) => { event.stopPropagation(); triggerSpeakerSelectionDropdown(logItem.id, event.currentTarget); });
       iconContainer.appendChild(nameBelowIconSpan);
       messageContainer.appendChild(iconContainer);
 
       const contentContainer = document.createElement('div'); contentContainer.className = 'content-container';
       const speakerNameSpan = document.createElement('span'); speakerNameSpan.className = 'speaker-name-default'; speakerNameSpan.innerHTML = `${escapeHtml(setting.displayName)} <span class="text-xs font-normal text-gray-500" style="text-shadow: none;">[${escapeHtml(logItem.tab || 'main')}]</span>`;
       speakerNameSpan.style.color = messageTextColor;
+      speakerNameSpan.title = 'クリックして発言者を変更';
+      speakerNameSpan.addEventListener('click', (event) => { event.stopPropagation(); triggerSpeakerSelectionDropdown(logItem.id, event.currentTarget); });
       const tabBelowIconSpan = document.createElement('span'); tabBelowIconSpan.className = 'tab-name-below-icon'; tabBelowIconSpan.textContent = `[${escapeHtml(logItem.tab || 'main')}]`;
 
       const bubbleDiv = document.createElement('div');
@@ -1423,12 +1427,24 @@
       const actionButtonContainer = document.createElement('div'); actionButtonContainer.className = 'action-button-container';
       const advancedActionButtonContainer = document.createElement('div'); advancedActionButtonContainer.className = 'advanced-action-buttons';
 
-      const insertImgBtn = createActionButton('画像挿入', 'action-button-insert', () => triggerImageInsert('after', logItem.id));
-      const deleteBtnBubble = createDeleteButton(logItem.id, 'メッセージ');
-      if (insertImgBtn) actionButtonContainer.appendChild(insertImgBtn);
-      if (deleteBtnBubble) actionButtonContainer.appendChild(deleteBtnBubble);
+    // --- 並び替え / タブ変更 / 挿入 / 削除 ---
+    const moveUpBtn = createActionButton('上に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, -1));
+    const moveDownBtn = createActionButton('下に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, 1));
+    const changeTabBtn = createActionButton('タブ変更', 'action-button-tabmove', (ev) => {
+        ev.stopPropagation();
+        triggerTabSelectionDropdown(logItem.id, ev.currentTarget);
+    });
 
-      const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向きに';
+    // 画像挿入・削除ボタン
+    const insertImgBtn = createActionButton('画像挿入', 'action-button-insert', () => triggerImageInsert('after', logItem.id));
+    const deleteBtnBubble = createDeleteButton(logItem.id, 'メッセージ');
+
+    if (moveUpBtn) actionButtonContainer.appendChild(moveUpBtn);
+    if (moveDownBtn) actionButtonContainer.appendChild(moveDownBtn);
+    if (changeTabBtn) actionButtonContainer.appendChild(changeTabBtn);
+    if (insertImgBtn) actionButtonContainer.appendChild(insertImgBtn);
+    if (deleteBtnBubble) actionButtonContainer.appendChild(deleteBtnBubble);
+const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向きに';
       const toggleAlignBtn = createActionButton(toggleAlignBtnText, 'action-button-custom', () => toggleMessageAlignment(logItem.id));
       const addChatBtn = createActionButton('発言追加', 'action-button-custom', () => openAddChatItemModal(logItem.id));
       const addHeadingBtn = createActionButton('見出し追加', 'action-button-custom', () => openAddHeadingModal(logItem.id));
@@ -1457,7 +1473,18 @@
       const narrationActionButtonContainer = document.createElement('div');
       narrationActionButtonContainer.style.display = 'inline-block';
       narrationActionButtonContainer.style.marginLeft = '10px';
+
+      const moveUpBtnN = createActionButton('上に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, -1));
+      const moveDownBtnN = createActionButton('下に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, 1));
+      const changeTabBtnN = createActionButton('タブ変更', 'action-button-tabmove', (ev) => {
+          ev.stopPropagation();
+          triggerTabSelectionDropdown(logItem.id, ev.currentTarget);
+      });
       const narrationDeleteButton = createDeleteButton(logItem.id, 'メッセージ');
+
+      if (moveUpBtnN) narrationActionButtonContainer.appendChild(moveUpBtnN);
+      if (moveDownBtnN) narrationActionButtonContainer.appendChild(moveDownBtnN);
+      if (changeTabBtnN) narrationActionButtonContainer.appendChild(changeTabBtnN);
       if (narrationDeleteButton) { narrationActionButtonContainer.appendChild(narrationDeleteButton); }
       narrationContainer.appendChild(narrationActionButtonContainer);
       container.appendChild(narrationContainer);
@@ -1828,6 +1855,217 @@
   }
   function closeIconDropdown() { if (currentDropdown) { currentDropdown.classList.add('hidden'); currentDropdown.innerHTML = ''; currentDropdown = null; document.removeEventListener('click', handleClickOutsideDropdown, true); } }
   function handleClickOutsideDropdown(event) { if (currentDropdown && !currentDropdown.contains(event.target)) { const clickedOnIcon = event.target.closest('.message-icon'); if (!clickedOnIcon) closeIconDropdown(); } }
+
+  // --- Speaker / Tab dropdowns (editor) ---
+  function showSimpleSelectDropdown(anchorEl, options, currentValue, onSelect) {
+      // Close any existing dropdown (reuse the same global currentDropdown handler)
+      closeIconDropdown();
+      const dropdown = document.createElement('div');
+      dropdown.className = 'icon-select-dropdown'; // reuse existing positioning styles
+      dropdown.style.position = 'fixed';
+      dropdown.style.zIndex = '9999';
+      dropdown.style.padding = '6px';
+      dropdown.style.minWidth = '180px';
+
+      const select = document.createElement('select');
+      select.style.width = '100%';
+      select.style.padding = '6px';
+      select.style.border = '1px solid #ccc';
+      select.style.borderRadius = '6px';
+      options.forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (opt.value === currentValue) o.selected = true;
+          select.appendChild(o);
+      });
+      dropdown.appendChild(select);
+
+      document.body.appendChild(dropdown);
+      currentDropdown = dropdown;
+
+      const rect = anchorEl.getBoundingClientRect();
+      const top = Math.min(window.innerHeight - 10, rect.bottom + 6);
+      const left = Math.min(window.innerWidth - 10, rect.left);
+      dropdown.style.top = `${top}px`;
+      dropdown.style.left = `${left}px`;
+
+      const cleanup = () => closeIconDropdown();
+      select.addEventListener('change', () => {
+          const v = select.value;
+          cleanup();
+          onSelect(v);
+      });
+
+      // Close on outside click
+      setTimeout(() => document.addEventListener('click', handleClickOutsideDropdown, true), 0);
+      select.focus();
+  }
+
+  function triggerSpeakerSelectionDropdown(messageId, anchorEl) {
+      const item = displayLogData.find(d => d.id === messageId && d.type === 'message');
+      if (!item) return;
+      const speakers = Object.keys(characterSettings || {});
+      const options = speakers.map(s => ({ value: s, label: characterSettings[s]?.displayName ? `${characterSettings[s].displayName} (${s})` : s }));
+      showSimpleSelectDropdown(anchorEl, options, item.speaker || speakers[0] || '不明', (selectedSpeaker) => {
+          applySpeakerChange(messageId, selectedSpeaker);
+      });
+  }
+
+  function triggerTabSelectionDropdown(messageId, anchorEl) {
+      const item = displayLogData.find(d => d.id === messageId && d.type === 'message');
+      if (!item) return;
+      // existing tabs from current data
+      const tabsSet = new Set();
+      displayLogData.forEach(d => {
+          if (d.type === 'message') tabsSet.add(d.tab || 'main');
+      });
+      const tabs = Array.from(tabsSet).sort();
+      const options = tabs.map(t => ({ value: t, label: t }));
+      showSimpleSelectDropdown(anchorEl, options, item.tab || 'main', (selectedTab) => {
+          applyTabChange(messageId, selectedTab);
+      });
+  }
+
+  function applySpeakerChange(messageId, newSpeaker) {
+      const idx = displayLogData.findIndex(d => d.id === messageId && d.type === 'message');
+      if (idx === -1) return;
+      const item = displayLogData[idx];
+      item.speaker = newSpeaker;
+
+      // reset icon to default for the new speaker
+      item.iconKey = 'default';
+      item.overrideIconSrc = null;
+
+      // adopt new speaker color if available
+      const setting = characterSettings[newSpeaker];
+      if (setting?.color) item.color = setting.color;
+
+      updateSingleItemInDomOrRemove(item);
+  }
+
+  function applyTabChange(messageId, newTab) {
+      const idx = displayLogData.findIndex(d => d.id === messageId && d.type === 'message');
+      if (idx === -1) return;
+      const item = displayLogData[idx];
+      item.tab = newTab;
+      updateSingleItemInDomOrRemove(item);
+  }
+
+  function isItemVisibleInCurrentEditorView(item) {
+      // Mirror renderLog() filter logic for a single item
+      let itemTab = null, itemSpeaker = null;
+
+      if (item.type === 'message') {
+          itemTab = item.tab || 'main';
+          itemSpeaker = item.speaker || '不明';
+      } else if (item.type === 'image') {
+          if (item.anchorId === HEADER_IMAGE_ANCHOR) return currentSpeakerFilter === 'all';
+          const anchorMsg = displayLogData.find(m => m.id === item.anchorId && m.type === 'message');
+          if (anchorMsg) {
+              itemTab = anchorMsg.tab || 'main';
+              itemSpeaker = anchorMsg.speaker || '不明';
+          } else {
+              return currentTabFilter === 'all' && currentSpeakerFilter === 'all';
+          }
+      } else if (item.type === 'heading' || item.type === 'error') {
+          return currentSpeakerFilter === 'all';
+      } else {
+          return false;
+      }
+
+      const speakerMatch = currentSpeakerFilter === 'all' || itemSpeaker === currentSpeakerFilter;
+      if (!speakerMatch) return false;
+
+      if (currentTabFilter === 'all') {
+          if (item.type === 'heading' || item.type === 'error' || (item.type === 'image' && item.anchorId === HEADER_IMAGE_ANCHOR)) return true;
+          return itemTab ? visibleTabsInAllMode.has(itemTab) : false;
+      }
+      return itemTab === currentTabFilter;
+  }
+
+  function updateSingleItemInDomOrRemove(item) {
+      const el = logDisplayDiv.querySelector(`[data-item-id="${item.id}"]`);
+      const visible = isItemVisibleInCurrentEditorView(item);
+
+      if (!visible) {
+          if (el) el.remove();
+          return;
+      }
+      const newEl = (item.type === 'message') ? createMessageElement(item)
+                  : (item.type === 'image') ? createInsertedImageElement(item)
+                  : (item.type === 'heading') ? createHeadingElement(item)
+                  : (item.type === 'error') ? createErrorElement(item)
+                  : null;
+      if (!newEl) return;
+
+      if (el) el.replaceWith(newEl);
+      else logDisplayDiv.appendChild(newEl); // fallback
+  }
+
+  // --- Ordering / Move ---
+  function getCurrentEditorViewSortedItems() {
+      const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
+      const filteredItems = displayLogData.filter(isItemVisibleInCurrentEditorView);
+      return filteredItems.sort((a, b) => {
+          if ((a.originalIndex || 0) !== (b.originalIndex || 0)) return (a.originalIndex || 0) - (b.originalIndex || 0);
+          if ((a.insertOrder || 0) !== (b.insertOrder || 0)) return (a.insertOrder || 0) - (b.insertOrder || 0);
+          return (typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99);
+      });
+  }
+
+  function renumberOrderKeysIfNeededForSwap(a, b) {
+      const aOi = a.originalIndex || 0, bOi = b.originalIndex || 0;
+      const aIo = a.insertOrder || 0, bIo = b.insertOrder || 0;
+      if (aOi === bOi && aIo === bIo) {
+          // Rare collision: renumber all items in global display order to ensure uniqueness.
+          const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
+          const globalSorted = [...displayLogData].sort((x, y) => {
+              if ((x.originalIndex || 0) !== (y.originalIndex || 0)) return (x.originalIndex || 0) - (y.originalIndex || 0);
+              if ((x.insertOrder || 0) !== (y.insertOrder || 0)) return (x.insertOrder || 0) - (y.insertOrder || 0);
+              return (typeSortOrder[x.type] || 99) - (typeSortOrder[y.type] || 99);
+          });
+          globalSorted.forEach((it, idx) => {
+              it.originalIndex = idx;
+              it.insertOrder = 0;
+          });
+      }
+  }
+
+  function handleMoveItem(itemId, direction) {
+      const view = getCurrentEditorViewSortedItems();
+      const idx = view.findIndex(it => it.id === itemId);
+      if (idx === -1) return;
+      const targetIdx = idx + direction;
+      if (targetIdx < 0 || targetIdx >= view.length) return;
+
+      const a = view[idx];
+      const b = view[targetIdx];
+
+      renumberOrderKeysIfNeededForSwap(a, b);
+
+      // swap sort keys
+      const tmpOi = a.originalIndex; const tmpIo = a.insertOrder;
+      a.originalIndex = b.originalIndex; a.insertOrder = b.insertOrder;
+      b.originalIndex = tmpOi; b.insertOrder = tmpIo;
+
+      // swap DOM nodes (lightweight)
+      const aEl = logDisplayDiv.querySelector(`[data-item-id="${a.id}"]`);
+      const bEl = logDisplayDiv.querySelector(`[data-item-id="${b.id}"]`);
+      if (aEl && bEl && aEl.parentNode === bEl.parentNode) {
+          if (direction === 1) {
+              // move down: swap with next by inserting b before a
+              logDisplayDiv.insertBefore(bEl, aEl);
+          } else {
+              // move up: insert a before b
+              logDisplayDiv.insertBefore(aEl, bEl);
+          }
+      } else {
+          // fallback: minimal rerender of these two items
+          updateSingleItemInDomOrRemove(a);
+          updateSingleItemInDomOrRemove(b);
+      }
+  }
 
   function toggleHeadingsNav() {
       isHeadingsNavOpen = !isHeadingsNavOpen;
@@ -2241,14 +2479,7 @@
 
       sortedExportData.forEach((item, index) => {
           try {
-               const isMultiTabViewForExport = true;
-               if (isMultiTabViewForExport && item.type === 'message' && index > 0) {
-                   let prevMessageItem = null;
-                   for (let j = index - 1; j >= 0; j--) { if (sortedExportData[j].type === 'message') { prevMessageItem = sortedExportData[j]; break; } }
-                   if (prevMessageItem && (item.tab || 'main') !== (prevMessageItem.tab || 'main')) {
-                       logBodyContent += '<hr class="tab-separator export">\n';
-                   }
-               }
+               // Note: Tab boundary separators are generated dynamically in the exported viewer (no static <hr>).
               if (item.type === 'message') {
                   const charSettingFull = characterSettings[item.speaker] || { displayName: item.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
                   const speakerName = charSettingFull.displayName; const originalSpeaker = item.speaker;
@@ -2478,33 +2709,26 @@ function applyExportFilters() {
 }
 
 function updateExportTabSeparators() {
-    const separators = exportLogDisplay.querySelectorAll('.tab-separator.export');
-    separators.forEach(hr => hr.style.display = 'none');
-    if (currentExportTab === 'all') {
-        let lastVisibleTab = null; let firstVisibleItemFound = false;
-        const potentialSeparators = Array.from(exportLogDisplay.children);
-        potentialSeparators.forEach((element) => {
-            const isLogItem = element.classList.contains('log-item');
-            const isVisible = isLogItem && !element.classList.contains('hidden-log-item');
-            const isHeader = element.dataset.tab === 'header';
-            if (isVisible && !isHeader && element.classList.contains('message-item')) {
-                const currentItemTab = element.dataset.tab;
-                if (firstVisibleItemFound && lastVisibleTab !== null && currentItemTab !== lastVisibleTab && currentItemTab !== 'all') {
-                    let previousElement = element.previousElementSibling;
-                    while (previousElement) {
-                        if (previousElement.classList.contains('tab-separator')) { previousElement.style.display = 'block'; break; }
-                        if ((previousElement.classList.contains('log-item') && !previousElement.classList.contains('hidden-log-item') && previousElement.dataset.tab !== 'header') || !previousElement.previousElementSibling) break;
-                        previousElement = previousElement.previousElementSibling;
-                    }
-                }
-                if (currentItemTab !== 'all' && currentItemTab !== 'header') lastVisibleTab = currentItemTab;
-                firstVisibleItemFound = true;
-            }
-        });
-    }
-}
+    // Rebuild separators every time to avoid "ghost" separators after filtering / deletions.
+    exportLogDisplay.querySelectorAll('.tab-separator.export').forEach(hr => hr.remove());
 
-const headingsForExport = ${headingsDataString};
+    if (currentExportTab !== 'all') return;
+
+    const visibleMessages = Array.from(exportLogDisplay.querySelectorAll('.message-item.export.log-item'))
+        .filter(el => !el.classList.contains('hidden-log-item') && el.dataset.tab !== 'header');
+
+    let prevTab = null;
+    visibleMessages.forEach((el, idx) => {
+        const tab = el.dataset.tab || 'main';
+        if (idx > 0 && prevTab !== null && tab !== prevTab) {
+            const hr = document.createElement('hr');
+            hr.className = 'tab-separator export';
+            el.parentNode.insertBefore(hr, el);
+        }
+        prevTab = tab;
+    });
+}
+;
 function initializeExportHeadingsNav() {
     const navContainer = document.getElementById('export-headings-nav-container');
     const listUl = document.getElementById('export-headings-list');
@@ -2680,6 +2904,9 @@ color: var(--base-text-color);
 .narration-container.export { padding: 2px 4px; line-height: inherit; }
 .message-item.export[data-display-mode="narration"] .message-container.export { display: none; }
 .message-item.export[data-display-mode="bubble"] .narration-container.export { display: none; }
+.message-item.export[data-display-mode="narration"] .narration-tab,
+.message-item.export[data-display-mode="narration"] .narration-speaker { display: none; }
+
 .message-container.export.align-right { flex-direction: row-reverse; }
 .message-container.export.align-right .icon-container.export { margin-left: 12px; margin-right: 0; }
 .message-container.export.align-right .content-container.export { text-align: right; }
