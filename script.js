@@ -59,6 +59,7 @@
   const allModeTabFilterDiv = document.getElementById('all-mode-tab-filter');
   const logDisplayDiv = document.getElementById('log-display');
   const exportButton = document.getElementById('export-zip-button');
+  const exportHtmlButton = document.getElementById('export-html-button');
   const saveProjectButton = document.getElementById('save-project-button');
   const loadingOverlay = document.getElementById('loading-overlay');
   const saveSettingsButton = document.getElementById('save-settings-button');
@@ -266,6 +267,22 @@
       let success = false; let errorMessage = '';
       try {
           await loadProject(file);
+
+          // After loading a project, make the log display area taller for easier editing.
+          // (The user requested ~2.5x height specifically after project load.)
+          if (customizationSettings && typeof customizationSettings.logDisplayHeight === 'number') {
+              customizationSettings.logDisplayHeight = Math.round(customizationSettings.logDisplayHeight * 2.5);
+              // Update UI slider + actual height (renderLog reads customizationSettings.logDisplayHeight)
+              if (logHeightSlider) logHeightSlider.value = String(customizationSettings.logDisplayHeight);
+              if (logHeightValueSpan) logHeightValueSpan.textContent = String(customizationSettings.logDisplayHeight);
+              // Apply immediately as well (some layouts may not reflow as expected until a direct style set)
+              if (logDisplayDiv) {
+                  logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`;
+                  logDisplayDiv.style.minHeight = `${customizationSettings.logDisplayHeight}px`;
+              }
+          }
+          renderLog();
+
           projectLoadInfoSpan.textContent = `プロジェクト読込完了: ${escapeHtml(file.name)}`;
            const baseName = file.name.replace(PROJECT_FILE_EXTENSION, '');
            exportHtmlTitleInput.value = logFileNameBase || baseName;
@@ -350,12 +367,12 @@
   }
 
   function enableControls() {
-       exportButton.disabled = false; saveProjectButton.disabled = false; saveSettingsButton.disabled = false; loadSettingsButton.disabled = false;
+       exportButton.disabled = false; if (exportHtmlButton) exportHtmlButton.disabled = false; saveProjectButton.disabled = false; saveSettingsButton.disabled = false; loadSettingsButton.disabled = false;
        speakerFilterSelect.disabled = Object.keys(speakerFrequencies).length === 0 && Object.keys(characterSettings).filter(s => !speakerFrequencies[s]).length === 0;
        exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; addHeaderImageButton.disabled = false; addNewCharacterButton.disabled = false;
   }
   function disableControls() {
-      exportButton.disabled = true; saveProjectButton.disabled = true; saveSettingsButton.disabled = true; loadSettingsButton.disabled = true;
+      exportButton.disabled = true; if (exportHtmlButton) exportHtmlButton.disabled = true; saveProjectButton.disabled = true; saveSettingsButton.disabled = true; loadSettingsButton.disabled = true;
       speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; addHeaderImageButton.disabled = true; addNewCharacterButton.disabled = true;
   }
 
@@ -1430,7 +1447,7 @@
     // --- 並び替え / タブ変更 / 挿入 / 削除 ---
     const moveUpBtn = createActionButton('上に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, -1));
     const moveDownBtn = createActionButton('下に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, 1));
-    const changeTabBtn = createActionButton('タブ変更', 'action-button-tabmove', (ev) => {
+    const changeTabBtn = createActionButton('タブ変更', 'action-button-custom', (ev) => {
         ev.stopPropagation();
         triggerTabSelectionDropdown(logItem.id, ev.currentTarget);
     });
@@ -1438,13 +1455,12 @@
     // 画像挿入・削除ボタン
     const insertImgBtn = createActionButton('画像挿入', 'action-button-insert', () => triggerImageInsert('after', logItem.id));
     const deleteBtnBubble = createDeleteButton(logItem.id, 'メッセージ');
-
     if (moveUpBtn) actionButtonContainer.appendChild(moveUpBtn);
     if (moveDownBtn) actionButtonContainer.appendChild(moveDownBtn);
-    if (changeTabBtn) actionButtonContainer.appendChild(changeTabBtn);
     if (insertImgBtn) actionButtonContainer.appendChild(insertImgBtn);
     if (deleteBtnBubble) actionButtonContainer.appendChild(deleteBtnBubble);
-const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向きに';
+if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
+      const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向きに';
       const toggleAlignBtn = createActionButton(toggleAlignBtnText, 'action-button-custom', () => toggleMessageAlignment(logItem.id));
       const addChatBtn = createActionButton('発言追加', 'action-button-custom', () => openAddChatItemModal(logItem.id));
       const addHeadingBtn = createActionButton('見出し追加', 'action-button-custom', () => openAddHeadingModal(logItem.id));
@@ -1471,8 +1487,7 @@ const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向�
 
 
       const narrationActionButtonContainer = document.createElement('div');
-      narrationActionButtonContainer.style.display = 'inline-block';
-      narrationActionButtonContainer.style.marginLeft = '10px';
+      narrationActionButtonContainer.className = 'narration-action-buttons';
 
       const moveUpBtnN = createActionButton('上に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, -1));
       const moveDownBtnN = createActionButton('下に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, 1));
@@ -2466,6 +2481,124 @@ const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向�
        } catch (error) { console.error(`Error during ZIP export:`, error); alert(`ZIPエクスポートエラー: ${error.message}`); }
        finally { hideLoading(); }
   }
+
+  async function handleExportSingleHtml() {
+      const htmlTitle = exportHtmlTitleInput.value.trim() || logFileNameBase || 'session_log_export';
+      const fileBase = exportZipFilenameInput.value.trim() || logFileNameBase || 'session_log_export';
+      const htmlFilename = `${fileBase}.html`;
+
+      const itemsToExport = displayLogData;
+      if (itemsToExport.length === 0) { alert('エクスポートするデータがありません。'); return; }
+
+      showLoading();
+      try {
+          // 1) Generate HTML + CSS (same as ZIP export)
+          const rawCss = generateOutputCss(customizationSettings);
+          let minifiedCss = generateMinifiedCss(rawCss);
+          let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
+
+          // 2) Build a map: "images/xxx.png" -> "data:image/webp;base64,..."
+          const imageDataUrlMap = new Map();
+          const conversions = [];
+          for (const [key, fileObject] of Object.entries(uploadedFiles)) {
+              if (!(fileObject instanceof Blob)) continue;
+              const imagePath = getImagePathForKey(key, fileObject);
+              if (!imagePath || imageDataUrlMap.has(imagePath)) continue;
+              conversions.push((async () => {
+                  const dataUrl = await convertBlobToCompressedDataURL(fileObject);
+                  imageDataUrlMap.set(imagePath, dataUrl);
+              })());
+          }
+          await Promise.all(conversions);
+
+          // 3) Replace image references inside CSS + HTML
+          for (const [imagePath, dataUrl] of imageDataUrlMap.entries()) {
+              // Replace in HTML attributes (src/href/etc)
+              outputHtml = outputHtml.split(imagePath).join(dataUrl);
+              // Replace in CSS url(...)
+              minifiedCss = minifiedCss.split(imagePath).join(dataUrl);
+          }
+
+          // 4) Inline CSS into HTML
+          // Try to replace link tag that points to style.css (and also cover variants)
+          outputHtml = outputHtml.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i, `<style>${minifiedCss}</style>`);
+          // If link tag not found, inject before </head>
+          if (!outputHtml.includes(`<style>${minifiedCss}</style>`)) {
+              outputHtml = outputHtml.replace(/<\/head>/i, `<style>${minifiedCss}</style>
+</head>`);
+          }
+
+          // 5) Download
+          const blob = new Blob([outputHtml], { type: 'text/html;charset=utf-8' });
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = htmlFilename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 2000);
+          alert(`エクスポート完了: ${htmlFilename}`);
+      } catch (error) {
+          console.error('Error during HTML export:', error);
+          alert(`HTMLエクスポートエラー: ${error.message}`);
+      } finally {
+          hideLoading();
+      }
+  }
+
+  function convertBlobToCompressedDataURL(blob) {
+      // Convert Blob -> compressed (lossy) DataURL.
+      // Note: Uses WebP when available (supports alpha), otherwise falls back.
+      return new Promise((resolve, reject) => {
+          try {
+              const reader = new FileReader();
+              reader.onload = () => {
+                  const srcDataUrl = reader.result;
+                  const img = new Image();
+                  img.onload = () => {
+                      try {
+                          // Heuristic downscale: icons stay small, others limited by max dimension
+                          const maxDim = (img.width <= 256 && img.height <= 256) ? 256 : 800;
+                          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                          const w = Math.max(1, Math.round(img.width * scale));
+                          const h = Math.max(1, Math.round(img.height * scale));
+
+                          const canvas = document.createElement('canvas');
+                          canvas.width = w;
+                          canvas.height = h;
+                          const ctx = canvas.getContext('2d', { alpha: true });
+                          ctx.imageSmoothingEnabled = true;
+                          ctx.imageSmoothingQuality = 'high';
+                          ctx.drawImage(img, 0, 0, w, h);
+
+                          // Prefer WebP (smaller, supports alpha)
+                          let out = '';
+                          try { out = canvas.toDataURL('image/webp', 0.6); } catch (_e) { out = ''; }
+                          if (!out || out === 'data:,') {
+                              try { out = canvas.toDataURL('image/jpeg', 0.6); } catch (_e2) { out = ''; }
+                          }
+                          if (!out || out === 'data:,') {
+                              // Fallback: original (already a dataURL)
+                              out = srcDataUrl;
+                          }
+                          resolve(out);
+                      } catch (e) {
+                          // If canvas conversion fails, fall back to original DataURL
+                          resolve(srcDataUrl);
+                      }
+                  };
+                  img.onerror = () => resolve(srcDataUrl);
+                  img.src = srcDataUrl;
+              };
+              reader.onerror = () => reject(reader.error || new Error('Failed to read image blob'));
+              reader.readAsDataURL(blob);
+          } catch (e) {
+              reject(e);
+          }
+      });
+  }
+
   function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, _embeddedJsContent_unused) {
       const { iconSize, nameBelowIconMode, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
       let logBodyContent = ''; let headingsForNavOutput = [];
@@ -3050,6 +3183,7 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
       logTabsNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) handleTabChange(e.target.dataset.tab); });
       speakerFilterSelect.addEventListener('change', handleSpeakerFilterChange);
       exportButton.addEventListener('click', handleExportZip);
+      if (exportHtmlButton) exportHtmlButton.addEventListener('click', handleExportSingleHtml);
       saveProjectButton.addEventListener('click', saveProject);
       insertImageInput.addEventListener('change', handleInsertImageFile);
       addHeaderImageButton.addEventListener('click', () => triggerImageInsert('header', null));

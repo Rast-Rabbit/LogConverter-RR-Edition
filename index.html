@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ココフォリア/Tekeyログ整形ツール(画像埋め込み機能付き)</title>
+    <title>ココフォリア/Tekeyログ整形ツール(画像埋め込み機能付き)　つーあーる版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +33,7 @@
     </div>
 
     <div class="container mx-auto max-w-7xl bg-white rounded-lg shadow-xl p-5 md:p-8">
-        <h1 class="text-2xl md:text-3xl font-bold mb-4 text-center text-gray-800">ココフォリア/Tekeyログ整形ツール (画像埋め込み機能付き)</h1>
+        <h1 class="text-2xl md:text-3xl font-bold mb-4 text-center text-gray-800">ココフォリア/Tekeyログ整形ツール (画像埋め込み機能付き)　つーあーる版</h1>
         <div class="mb-6 p-4 border border-blue-200 rounded-lg bg-blue-50 text-sm text-blue-800">
             <h3 class="font-semibold mb-1">使い方:</h3>
             <ol class="list-decimal list-inside space-y-1">
@@ -105,7 +105,7 @@
                     <div><label for="icon-size-slider" class="block text-sm font-medium text-gray-700">アイコンサイズ: <span id="icon-size-value">64</span>px</label><input type="range" id="icon-size-slider" min="24" max="128" value="64" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-1"><label for="bubble-width-slider" class="block text-sm font-medium text-gray-700">吹き出し最大幅: <span id="bubble-width-value">80</span>%</label><input type="range" id="bubble-width-slider" min="30" max="100" value="80" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2"><label for="font-family-select" class="block text-sm font-medium text-gray-700">フォント:</label><select id="font-family-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white focus:border-indigo-500 focus:ring-indigo-500"><option value="font-noto-sans" selected>'Noto Sans JP' (推奨)</option><option value="font-inter">'Inter' (UI標準)</option><option value="font-noto-serif">'Noto Serif JP' (明朝)</option><option value="font-mplus-rounded">'M PLUS Rounded 1c' (丸ゴシック)</option><option value="font-system-sans">システム標準ゴシック</option><option value="font-system-serif">システム標準明朝</option><option value="font-system-mono">システム標準等幅</option></select></div>
-                    <div class="md:col-span-2"><label for="log-height-slider" class="block text-sm font-medium text-gray-700">ログ表示高さ: <span id="log-height-value">384</span>px</label><input type="range" id="log-height-slider" min="200" max="800" value="384" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
+                    <div class="md:col-span-2"><label for="log-height-slider" class="block text-sm font-medium text-gray-700">ログ表示高さ: <span id="log-height-value">384</span>px</label><input type="range" id="log-height-slider" min="200" max="2000" value="384" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div>
                         <label for="base-text-color" class="block text-sm font-medium text-gray-700">基本文字色:</label>
                         <input type="color" id="base-text-color" value="#333333" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
@@ -170,6 +170,7 @@
              <div class="flex flex-wrap justify-center items-center gap-4">
                  <button id="save-project-button" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>プロジェクトを保存 (.cclogproj)</button>
                  <button id="export-zip-button" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>整形済みログをZIPで出力</button>
+                 <button id="export-html-button" class="px-6 py-3 bg-indigo-100 text-indigo-800 font-semibold rounded-lg shadow hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled>整形済みログをHTMLで出力</button>
              </div>
              <p class="mt-3 text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-300">
                  <strong>【重要】ファイルがブロックされる場合について:</strong><br>
@@ -181,11 +182,18 @@
              </p>
              <p class="mt-2 text-sm text-gray-500">プロジェクトファイルには編集状態全体が保存されます。</p>
              <p class="mt-2 text-sm text-gray-500">整形済みログZIPには、表示用のHTML/CSS/画像が含まれます。</p>
+                          <p class="mt-2 text-sm text-gray-500">整形済みログをＨＴＭＬ出力した場合、画像ファイルの画質は元データより劣化します。</p>
              <p class="text-xs text-gray-500">（注意: Google Fontsはオフラインでは表示されません）</p>
         </div>
 
         <footer class="app-footer">
-            <h4>更新履歴</h4>
+     <h4>更新履歴</h4>
+            <ul>
+                 <li>2026/02/28: 発言者変更機能、上下並べ替え機能を実装。編集領域を拡大。ＨＴＭＬ単体出力を追加して公開。</li>
+            </ul>
+
+
+            <h4>更新履歴（原版）</h4>
             <ul>
                  <li>2025/07/08: キャラごとの強制地の文モード機能、[all]タブでの表示タブ選択機能を追加</li>
                  <li>2025/06/06: Tekeyログのタブ数問題修正、エクスポート時の画像名を英数字に変更 </li>
@@ -203,7 +211,8 @@
                 <p>政治的・選挙活動を目的とした利用は開発者の想定する用途外であるため、控えていただけると幸いです。やむを得ず利用する場合は、関連する法規やプラットフォーム規約に沿って慎重に判断してください。</p>
             </div>
             <div class="footer-credits">
-                作成者: しるべ (<a href="https://x.com/qxoiUioxp" target="_blank" rel="noopener noreferrer">@qxoiUioxp</a>)
+                改変: つーあーる (<a href="https://x.com/RastRabbit" target="_blank" rel="noopener noreferrer">@RastRabbit</a>)
+                原作: しるべ様 (<a href="https://x.com/qxoiUioxp" target="_blank" rel="noopener noreferrer">@qxoiUioxp</a>)
             </div>
         </footer>
     </div>

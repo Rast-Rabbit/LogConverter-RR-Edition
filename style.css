@@ -263,6 +263,15 @@ body {
     /* color applied by JS */
 }
 
+
+/* Narration mode action buttons (inline, with spacing) */
+.narration-action-buttons {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-left: 10px;
+    vertical-align: middle;
+}
 .message-item[data-display-mode="narration"] .narration-tab,
 .message-item[data-display-mode="narration"] .narration-speaker {
     display: none;
