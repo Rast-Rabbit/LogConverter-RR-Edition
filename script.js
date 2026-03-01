@@ -3232,3 +3232,20 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeApp); else initializeApp();
 
 })();
+
+ /* =====================================================
+     サイト統合テーマ連携（postMessage受信）
+     ===================================================== */
+     
+(function () {
+    function applyTheme(theme) {
+      document.body.classList.remove('rr-site-dark', 'rr-site-light');
+      document.body.classList.add('rr-site-' + theme);
+    }
+
+    window.addEventListener('message', function (event) {
+      if (event.data && (event.data.theme === 'dark' || event.data.theme === 'light')) {
+        applyTheme(event.data.theme);
+      }
+    });
+  })();

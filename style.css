@@ -1070,3 +1070,48 @@ input:checked+.slider:before {
 .drag-handle:active { cursor: grabbing; }
 
 .sortable-ghost { opacity: 0.35; }
+
+
+
+  /* =====================================================
+     サイト統合テーマ（rr-site-dark / rr-site-light）
+     スタンドアロン時はこのクラスが付かないので影響なし
+     ===================================================== */
+
+  /* ── ダーク ── */
+  body.rr-site-dark {
+    background-color: transparent !important;
+    color: rgba(255,255,255,0.92);
+  }
+  body.rr-site-dark .bg-gray-900 { background-color: rgba(0,0,0,0.65) !important; }
+  body.rr-site-dark .bg-gray-800 { background-color: rgba(0,0,0,0.50) !important; }
+  body.rr-site-dark .bg-gray-700 { background-color: rgba(255,255,255,0.07) !important; }
+  body.rr-site-dark input,
+  body.rr-site-dark textarea,
+  body.rr-site-dark select {
+    background-color: rgba(0,0,0,0.35) !important;
+    border-color: rgba(255,255,255,0.18) !important;
+    color: rgba(255,255,255,0.90) !important;
+  }
+
+  /* ── ライト ── */
+  body.rr-site-light {
+    background-color: #f8f4ef !important;
+    color: rgba(20,14,8,0.90);
+  }
+  body.rr-site-light .bg-gray-900 { background-color: rgba(255,255,255,0.92) !important; }
+  body.rr-site-light .bg-gray-800 { background-color: rgba(248,244,238,0.95) !important; }
+  body.rr-site-light .bg-gray-700 { background-color: rgba(0,0,0,0.05) !important; }
+  body.rr-site-light .text-white  { color: rgba(20,14,8,0.90) !important; }
+  body.rr-site-light .text-gray-300,
+  body.rr-site-light .text-gray-400 { color: rgba(20,14,8,0.65) !important; }
+  body.rr-site-light input,
+  body.rr-site-light textarea,
+  body.rr-site-light select {
+    background-color: rgba(255,255,255,0.80) !important;
+    border-color: rgba(0,0,0,0.14) !important;
+    color: rgba(20,14,8,0.90) !important;
+  }
+  body.rr-site-light button {
+    color: rgba(20,14,8,0.80) !important;
+  }
