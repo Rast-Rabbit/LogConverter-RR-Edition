@@ -1115,3 +1115,122 @@ input:checked+.slider:before {
   body.rr-site-light button {
     color: rgba(20,14,8,0.80) !important;
   }
+
+
+    /* ===========================================================
+     サイト統合ダークテーマ（rr-site-dark / rr-site-light）
+     postMessage で body.rr-site-dark が付いた時のみ適用。
+     スタンドアロン起動時はこのクラスが付かないので影響なし。
+     =========================================================== */
+
+  /* ── ページ背景：サイトの背景画像を透過 ── */
+  body.rr-site-dark {
+    background-color: transparent !important;
+    color: rgba(255,255,255,0.88) !important;
+  }
+
+  /* ── Tailwind 背景クラス ── */
+  body.rr-site-dark .bg-white        { background-color: rgba(0,0,0,0.55)           !important; }
+  body.rr-site-dark .bg-gray-50      { background-color: rgba(0,0,0,0.35)           !important; }
+  body.rr-site-dark .bg-gray-100     { background-color: rgba(0,0,0,0.00)           !important; }
+  body.rr-site-dark .bg-gray-200     { background-color: rgba(255,255,255,0.06)     !important; }
+  body.rr-site-dark .bg-gray-300     { background-color: rgba(255,255,255,0.09)     !important; }
+  body.rr-site-dark .bg-gray-400     { background-color: rgba(255,255,255,0.12)     !important; }
+  body.rr-site-dark .bg-gray-500     { background-color: rgba(255,255,255,0.16)     !important; }
+  body.rr-site-dark .bg-gray-600     { background-color: rgba(0,0,0,0.48)           !important; }
+  body.rr-site-dark .bg-gray-700     { background-color: rgba(0,0,0,0.55)           !important; }
+  body.rr-site-dark .bg-gray-800     { background-color: rgba(0,0,0,0.65)           !important; }
+  body.rr-site-dark .bg-gray-900     { background-color: rgba(0,0,0,0.75)           !important; }
+
+  /* ── Tailwind テキストカラー ── */
+  body.rr-site-dark .text-black,
+  body.rr-site-dark .text-gray-900,
+  body.rr-site-dark .text-gray-800   { color: rgba(255,255,255,0.90) !important; }
+  body.rr-site-dark .text-gray-700,
+  body.rr-site-dark .text-gray-600   { color: rgba(255,255,255,0.75) !important; }
+  body.rr-site-dark .text-gray-500,
+  body.rr-site-dark .text-gray-400   { color: rgba(255,255,255,0.55) !important; }
+  body.rr-site-dark .text-gray-300,
+  body.rr-site-dark .text-gray-200   { color: rgba(255,255,255,0.40) !important; }
+
+  /* ── Tailwind ボーダー ── */
+  body.rr-site-dark .border,
+  body.rr-site-dark .border-gray-200,
+  body.rr-site-dark .border-gray-300 { border-color: rgba(255,255,255,0.15) !important; }
+  body.rr-site-dark .border-gray-400,
+  body.rr-site-dark .border-gray-500 { border-color: rgba(255,255,255,0.22) !important; }
+  body.rr-site-dark .border-gray-600,
+  body.rr-site-dark .border-gray-700 { border-color: rgba(255,255,255,0.28) !important; }
+  body.rr-site-dark .divide-gray-200 > * + *,
+  body.rr-site-dark .divide-gray-300 > * + * { border-color: rgba(255,255,255,0.12) !important; }
+
+  /* ── 入力フィールド ── */
+  body.rr-site-dark input[type="text"],
+  body.rr-site-dark input[type="number"],
+  body.rr-site-dark input[type="file"],
+  body.rr-site-dark textarea,
+  body.rr-site-dark select {
+    background-color: rgba(0,0,0,0.40) !important;
+    border-color:     rgba(255,255,255,0.18) !important;
+    color:            rgba(255,255,255,0.88) !important;
+  }
+  body.rr-site-dark input[type="text"]::placeholder,
+  body.rr-site-dark textarea::placeholder { color: rgba(255,255,255,0.32) !important; }
+  body.rr-site-dark input[type="text"]:focus,
+  body.rr-site-dark textarea:focus,
+  body.rr-site-dark select:focus {
+    border-color: rgba(255,255,255,0.40) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.10) !important;
+  }
+  body.rr-site-dark input[type="range"]  { accent-color: #FF7A5C; }
+  body.rr-site-dark input[type="color"]  { border-color: rgba(255,255,255,0.20) !important; background: transparent
+  !important; }
+
+  /* ── ボタン ── */
+  body.rr-site-dark button {
+    background-color: rgba(255,255,255,0.08) !important;
+    border-color:     rgba(255,255,255,0.18) !important;
+    color:            rgba(255,255,255,0.82) !important;
+  }
+  body.rr-site-dark button:hover {
+    background-color: rgba(255,255,255,0.14) !important;
+  }
+  /* アクセントカラーボタン：色相を維持して明度のみ落とす */
+  body.rr-site-dark button[class*="bg-blue-"],
+  body.rr-site-dark button[class*="bg-green-"],
+  body.rr-site-dark button[class*="bg-red-"],
+  body.rr-site-dark button[class*="bg-indigo-"],
+  body.rr-site-dark button[class*="bg-purple-"],
+  body.rr-site-dark button[class*="bg-yellow-"] {
+    background-color: unset !important;
+    filter: brightness(0.80);
+    color: #fff !important;
+  }
+
+  /* ── ログ表示エリア（背景と枠はCSSで、テキスト色はJSで処理）── */
+  body.rr-site-dark #log-display {
+    background-color: rgba(0,0,0,0.55) !important;
+    border-color:     rgba(255,255,255,0.15) !important;
+  }
+
+  /* ── 見出しナビ ── */
+  body.rr-site-dark #export-headings-nav-container {
+    background-color: rgba(0,0,0,0.72) !important;
+    border-color:     rgba(255,255,255,0.14) !important;
+  }
+  body.rr-site-dark #export-headings-nav-container button {
+    background-color: rgba(255,255,255,0.10) !important;
+    color:            rgba(255,255,255,0.80) !important;
+  }
+
+  /* ── ローディングオーバーレイ ── */
+  body.rr-site-dark #loading-overlay { background-color: rgba(0,0,0,0.80) !important; }
+
+  /* ── スクロールバー ── */
+  body.rr-site-dark *::-webkit-scrollbar-track { background: rgba(0,0,0,0.20); }
+  body.rr-site-dark *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
+  body.rr-site-dark *::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.38); }
+
+  /* ── ライトモード ── */
+  body.rr-site-light { background-color: #f8f4ef !important; }

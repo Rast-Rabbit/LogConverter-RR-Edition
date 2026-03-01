@@ -1,10 +1,44 @@
 // Wrap entire script in an IIFE (Immediately Invoked Function Expression)
 (function() {
   "use strict"; // Enable strict mode
+        }
+}
+` + `
 
-  // --- State Variables ---
-  let displayLogData = []; // Holds the unified log data being edited
-  let characterSettings = {}; // { speakerName: { displayName, icon, expressions, alignment, color, customTextColor, forceNarration, isNew } }
+/* ===================================================
+     ダークモードトグル用CSS（ZIPエクスポート用）
+     body.export-body.dark-mode が付いた時のみ適用
+     =================================================== */
+#rr-dark-toggle {
+    position: fixed; bottom: 16px; right: 16px; z-index: 9999;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.80); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.20s;
+}
+#rr-dark-toggle:hover { background: rgba(0,0,0,0.70); color: #fff; }
+body.export-body.dark-mode #rr-dark-toggle {
+    background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.30);
+}
+body.export-body.dark-mode {
+    background-color: #100e0d;
+    color: rgba(255,255,255,0.90);
+}
+body.export-body.dark-mode .log-export-container {
+    background-color: rgba(0,0,0,0.65);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.50);
+    border: 1px solid rgba(255,255,255,0.12);
+}
+body.export-body.dark-mode h1 { border-bottom-color: rgba(255,255,255,0.18); }
+body.export-body.dark-mode .narration-text { color: rgba(255,255,255,0.85); }
+body.export-body.dark-mode .heading-text   { color: rgba(255,255,255,0.90); }
+body.export-body.dark-mode #export-headings-nav-container {
+    background-color: rgba(0,0,0,0.80); border-color: rgba(255,255,255,0.14);
+}
+body.export-body.dark-mode #export-headings-nav-container button {
+    background-color: rgba(255,255,255,0.10); color: rgba(255,255,255,0.80);
+}`;
   let customizationSettings = {
       normalBubbleColor: '#ffffff', rightBubbleColor: '#dcf8c6',
       fontSize: 16, backgroundColor: '#f3f4f6',
@@ -2466,9 +2500,32 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           const zip = new JSZip();
           const rawCss = generateOutputCss(customizationSettings);
           const minifiedCss = generateMinifiedCss(rawCss);
-          zip.file("style.css", minifiedCss);
-          const outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
-          zip.file("log_export.html", outputHtml);
+                    zip.file("style.css", minifiedCss);
+                    let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
+                    // ダークモードトグルボタン＋スクリプトを </body> 直前に挿入
+                    var darkModeSnippet = [
+                        '<button id="rr-dark-toggle" aria-label="ダークモード切り替え">🌙<\/button>',
+                        '<script>',
+                        '(function(){',
+                        '  var btn=document.getElementById("rr-dark-toggle"),body=document.body,KEY="rr-dm";',
+                        '  var DC=["#000000","#000","#111111","#111","#1a1a1a","#222222","#222","#333333","#333","#3d3d3d","#444444","#444"];',
+                        '  function norm(c){return(c||"").trim().toLowerCase().replace(/\\s/g,"");}',
+                        '  function isDark_(c){return DC.indexOf(norm(c))>=0;}',
+                        '  function applyText(on){',
+                        '    document.querySelectorAll(".bubble,.speaker-name-default,.speaker-name-below-icon").forEach(function(el){',
+                        '      if(on){if(el.style.color&&isDark_(el.style.color)){el.dataset.o=el.style.color;el.style.setProperty("color","rgba(255,255,255,0.90)","important");}}',
+                        '      else{if(el.dataset.o!==undefined){el.style.color=el.dataset.o;delete el.dataset.o;}}',
+                        '    });',
+                        '  }',
+                        '  function upd(){body.classList.toggle("dark-mode",isDark);btn.textContent=isDark?"☀":"🌙";applyText(isDark);}',
+                        '  btn.addEventListener("click",function(){isDark=!isDark;localStorage.setItem(KEY,isDark?"1":"0");upd();});',
+                        '  var isDark = localStorage.getItem(KEY)==="1";',
+                        '  upd();',
+                        '})();',
+                        '<\/script>'
+                    ].join('\n');
+                    outputHtml = outputHtml.replace('</body>', darkModeSnippet + '\n</body>');
+                    zip.file("log_export.html", outputHtml);
           const imgFolder = zip.folder("images"); if (!imgFolder) throw new Error("Failed to create 'images' folder.");
           const addedFiles = new Set();
            for (const [key, fileObject] of Object.entries(uploadedFiles)) {
@@ -3233,19 +3290,74 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
 
 })();
 
- /* =====================================================
-     サイト統合テーマ連携（postMessage受信）
-     ===================================================== */
-     
-(function () {
+  /* ===========================================================
+     サイト統合テーマ連携（末尾に追加）
+     =========================================================== */
+  (function () {
+    'use strict';
+
+    /* 「デフォルト黒」とみなす色 → ダークモードで白に反転 */
+    var DEFAULT_DARK_COLORS = [
+      '#000000','#000','#111111','#111','#1a1a1a',
+      '#222222','#222','#333333','#333','#3d3d3d',
+      '#404040','#444444','#444'
+    ];
+
+    function normColor(c) { return (c || '').trim().toLowerCase().replace(/\s/g, ''); }
+    function isDefaultDark(c) { return DEFAULT_DARK_COLORS.indexOf(normColor(c)) >= 0; }
+
+    /* ログエリア内でテキスト色が設定されうる要素 */
+    var LOG_SELECTORS = [
+      '#log-display .bubble',
+      '#log-display .speaker-name-default',
+      '#log-display .speaker-name-below-icon',
+      '#log-display .narration-text',
+      '#log-display .heading-text'
+    ].join(',');
+
+    function applyDarkText() {
+      document.querySelectorAll(LOG_SELECTORS).forEach(function (el) {
+        var c = el.style.color;
+        if (!c || !isDefaultDark(c)) return;
+        if (el.dataset.rrOrig === undefined) el.dataset.rrOrig = c;
+        el.style.setProperty('color', 'rgba(255,255,255,0.90)', 'important');
+      });
+    }
+
+    function restoreLightText() {
+      document.querySelectorAll('#log-display [data-rr-orig]').forEach(function (el) {
+        el.style.color = el.dataset.rrOrig;
+        delete el.dataset.rrOrig;
+      });
+    }
+
+    var _observer = null;
+
+    function startDark() {
+      applyDarkText();
+      if (!_observer) {
+        var logDiv = document.getElementById('log-display');
+        if (logDiv) {
+          _observer = new MutationObserver(applyDarkText);
+          _observer.observe(logDiv, { childList: true, subtree: true });
+        }
+      }
+    }
+
+    function stopDark() {
+      if (_observer) { _observer.disconnect(); _observer = null; }
+      restoreLightText();
+    }
+
     function applyTheme(theme) {
       document.body.classList.remove('rr-site-dark', 'rr-site-light');
       document.body.classList.add('rr-site-' + theme);
+      if (theme === 'dark') startDark(); else stopDark();
     }
 
-    window.addEventListener('message', function (event) {
-      if (event.data && (event.data.theme === 'dark' || event.data.theme === 'light')) {
-        applyTheme(event.data.theme);
+    window.addEventListener('message', function (ev) {
+      if (ev.data && (ev.data.theme === 'dark' || ev.data.theme === 'light')) {
+        applyTheme(ev.data.theme);
       }
     });
   })();
