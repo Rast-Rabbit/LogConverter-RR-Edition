@@ -1,0 +1,6 @@
+# Claude Code ローカル設定
+.claude/
+
+# デザイン検討用プレビューファイル
+dark-theme-preview.html
+dark_preview.html
