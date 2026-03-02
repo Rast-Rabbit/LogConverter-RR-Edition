@@ -98,21 +98,38 @@
             <div id="settings-panel-customize" class="hidden mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-customize">
                  <h3 class="text-lg font-semibold mb-3 text-gray-700">表示カスタマイズ:</h3>
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label for="bubble-normal-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色:</label><input type="color" id="bubble-normal-color" value="#ffffff" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
-                    <div><label for="bubble-right-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色:</label><input type="color" id="bubble-right-color" value="#dcf8c6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                    <div class="md:col-span-2 grid grid-cols-2 gap-3">
+                        <div><label for="bubble-normal-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色（ライト時）:</label><input type="color" id="bubble-normal-color" value="#ffffff" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="dark-normal-bubble-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色（ダーク時）:</label><input type="color" id="dark-normal-bubble-color" value="#1a2e20" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="bubble-right-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ライト時）:</label><input type="color" id="bubble-right-color" value="#dcf8c6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="dark-right-bubble-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ダーク時）:</label><input type="color" id="dark-right-bubble-color" value="#0e2818" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                    </div>
                     <div><label for="font-size-slider" class="block text-sm font-medium text-gray-700">フォントサイズ: <span id="font-size-value">16</span>px</label><input type="range" id="font-size-slider" min="10" max="24" value="16" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
-                    <div><label for="background-color" class="block text-sm font-medium text-gray-700">ログエリア背景色:</label><input type="color" id="background-color" value="#f3f4f6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                    <div class="md:col-span-2 grid grid-cols-2 gap-3">
+                        <div><label for="background-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ライト時）:</label><input type="color" id="background-color" value="#f3f4f6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="dark-bg-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ダーク時）:</label><input type="text" id="dark-bg-color" value="#101e16" placeholder="例: #101e16 or rgba(0,0,0,0.30)" class="mt-1 block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"></div>
+                    </div>
                     <div><label for="icon-size-slider" class="block text-sm font-medium text-gray-700">アイコンサイズ: <span id="icon-size-value">64</span>px</label><input type="range" id="icon-size-slider" min="24" max="128" value="64" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-1"><label for="bubble-width-slider" class="block text-sm font-medium text-gray-700">吹き出し最大幅: <span id="bubble-width-value">80</span>%</label><input type="range" id="bubble-width-slider" min="30" max="100" value="80" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2"><label for="font-family-select" class="block text-sm font-medium text-gray-700">フォント:</label><select id="font-family-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white focus:border-indigo-500 focus:ring-indigo-500"><option value="font-noto-sans" selected>'Noto Sans JP' (推奨)</option><option value="font-inter">'Inter' (UI標準)</option><option value="font-noto-serif">'Noto Serif JP' (明朝)</option><option value="font-mplus-rounded">'M PLUS Rounded 1c' (丸ゴシック)</option><option value="font-system-sans">システム標準ゴシック</option><option value="font-system-serif">システム標準明朝</option><option value="font-system-mono">システム標準等幅</option></select></div>
                     <div class="md:col-span-2"><label for="log-height-slider" class="block text-sm font-medium text-gray-700">ログ表示高さ: <span id="log-height-value">384</span>px</label><input type="range" id="log-height-slider" min="200" max="2000" value="384" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
-                    <div>
-                        <label for="base-text-color" class="block text-sm font-medium text-gray-700">基本文字色:</label>
-                        <input type="color" id="base-text-color" value="#333333" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
-                    </div>
-                    <div>
-                        <label for="text-edge-color-input" class="block text-sm font-medium text-gray-700">文字縁取り色:</label>
-                        <input type="color" id="text-edge-color-input" value="#ffffff" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                    <div class="md:col-span-2 grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="base-text-color" class="block text-sm font-medium text-gray-700">基本文字色（ライト時）:</label>
+                            <input type="color" id="base-text-color" value="#333333" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <label for="dark-base-text-color" class="block text-sm font-medium text-gray-700">基本文字色（ダーク時）:</label>
+                            <input type="color" id="dark-base-text-color" value="#c0e8cc" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <label for="text-edge-color-input" class="block text-sm font-medium text-gray-700">文字縁取り色（ライト時）:</label>
+                            <input type="color" id="text-edge-color-input" value="#ffffff" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <label for="dark-text-edge-color" class="block text-sm font-medium text-gray-700">文字縁取り色（ダーク時）:</label>
+                            <input type="text" id="dark-text-edge-color" value="transparent" placeholder="例: transparent / #000000" class="mt-1 block w-full h-8 rounded border border-gray-300 p-1.5 text-sm">
+                        </div>
                     </div>
                     <div class="md:col-span-2">
                         <label for="background-image-input-label" class="block text-sm font-medium text-gray-700">出力ログ背景画像:</label>
@@ -127,6 +144,13 @@
                         <label for="skip-delete-confirm-toggle" class="text-sm font-medium text-gray-700">削除確認を省略:</label>
                         <label class="switch">
                             <input type="checkbox" id="skip-delete-confirm-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="md:col-span-2 flex items-center space-x-2">
+                        <label for="include-theme-toggle" class="text-sm font-medium text-gray-700">ZIP出力にダーク/ライト切り替えボタンを含める:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="include-theme-toggle">
                             <span class="slider"></span>
                         </label>
                     </div>

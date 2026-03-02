@@ -40,7 +40,10 @@ body {
     /* For headings nav panel positioning */
     padding-left: 0;
     /* Adjusted if headings nav is open */
-    transition: padding-left 0.3s ease-in-out;
+    transition: padding-left 0.3s ease-in-out, background-color 0.4s ease, color 0.3s ease;
+}
+.headings-nav-panel, .modal-content, .icon-select-dropdown {
+    transition: background-color 0.25s ease;
 }
 
 #log-display {
@@ -1078,20 +1081,86 @@ input:checked+.slider:before {
      スタンドアロン時はこのクラスが付かないので影響なし
      ===================================================== */
 
-  /* ── ダーク ── */
+  /* ── ダーク（Forest Night） ── */
   body.rr-site-dark {
-    background-color: transparent !important;
-    color: rgba(255,255,255,0.92);
+    color: #c0e8cc;
   }
-  body.rr-site-dark .bg-gray-900 { background-color: rgba(0,0,0,0.65) !important; }
-  body.rr-site-dark .bg-gray-800 { background-color: rgba(0,0,0,0.50) !important; }
-  body.rr-site-dark .bg-gray-700 { background-color: rgba(255,255,255,0.07) !important; }
+  /* iframe内: 親の背景を透過 */
+  body.rr-site-dark.rr-in-iframe {
+    background-color: transparent !important;
+  }
+  /* 単体表示時: Forest Nightのページ背景色 */
+  body.rr-site-dark:not(.rr-in-iframe) {
+    background-color: #0a1410 !important;
+  }
+  /* 内側パネル: ページ背景より少し暗く */
+  body.rr-site-dark .bg-white,
+  body.rr-site-dark .bg-gray-50,
+  body.rr-site-dark .bg-gray-100 { background-color: rgba(0,0,0,0.35) !important; }
+  body.rr-site-dark .bg-blue-50  { background-color: rgba(0,0,0,0.30) !important; }
+  body.rr-site-dark .bg-gray-900 { background-color: rgba(0,0,0,0.55) !important; }
+  body.rr-site-dark .bg-gray-800 { background-color: rgba(0,0,0,0.42) !important; }
+  body.rr-site-dark .bg-gray-700 { background-color: rgba(192,232,204,0.07) !important; }
+  body.rr-site-dark .text-gray-800,
+  body.rr-site-dark .text-gray-700 { color: rgba(192,232,204,0.85) !important; }
+  body.rr-site-dark .text-gray-600,
+  body.rr-site-dark .text-gray-500 { color: rgba(192,232,204,0.60) !important; }
+  body.rr-site-dark .border-gray-200,
+  body.rr-site-dark .border-gray-300,
+  body.rr-site-dark .border-dashed { border-color: rgba(192,232,204,0.15) !important; }
+  /* タブアクティブ */
+  body.rr-site-dark .border-indigo-500 { border-color: #50c878 !important; }
+  body.rr-site-dark .text-indigo-600   { color: #50c878 !important; }
   body.rr-site-dark input,
   body.rr-site-dark textarea,
   body.rr-site-dark select {
     background-color: rgba(0,0,0,0.35) !important;
-    border-color: rgba(255,255,255,0.18) !important;
-    color: rgba(255,255,255,0.90) !important;
+    border-color: rgba(192,232,204,0.20) !important;
+    color: #c0e8cc !important;
+  }
+  /* ヘッディングナビ */
+  body.rr-site-dark .headings-nav-panel { background: rgba(0,8,4,0.75); }
+  body.rr-site-dark .toggle-headings-nav-btn { background-color: #50c878 !important; color: #0a1410 !important; }
+  body.rr-site-dark .headings-nav-panel a { color: #80c898; }
+  body.rr-site-dark .headings-nav-panel a:hover { color: #a0e0b0; }
+  /* モーダル */
+  body.rr-site-dark .modal-content {
+    background-color: rgba(5,12,8,0.95) !important;
+    color: #c0e8cc;
+  }
+  body.rr-site-dark .modal-content label { color: rgba(192,232,204,0.78) !important; }
+  /* ドロップダウン */
+  body.rr-site-dark .icon-select-dropdown {
+    background-color: rgba(5,12,8,0.95) !important;
+    border-color: rgba(192,232,204,0.18) !important;
+  }
+  /* アクションボタン */
+  body.rr-site-dark .action-button-insert { background-color: rgba(59,130,246,0.28) !important; color: #93c5fd !important; }
+  body.rr-site-dark .action-button-insert:hover { background-color: rgba(59,130,246,0.48) !important; }
+  body.rr-site-dark .action-button-delete { background-color: rgba(239,68,68,0.28) !important; color: #fca5a5 !important; }
+  body.rr-site-dark .action-button-delete:hover { background-color: rgba(239,68,68,0.48) !important; }
+  body.rr-site-dark .action-button-edit { background-color: rgba(234,179,8,0.22) !important; color: #fde047 !important; }
+  body.rr-site-dark .action-button-edit:hover { background-color: rgba(234,179,8,0.42) !important; }
+  body.rr-site-dark .action-button-custom { background-color: rgba(80,200,120,0.20) !important; color: #80c898 !important; }
+  body.rr-site-dark .action-button-custom:hover { background-color: rgba(80,200,120,0.38) !important; }
+  body.rr-site-dark .action-button-tabmove { background-color: rgba(48,168,80,0.20) !important; color: #86efac !important; }
+  body.rr-site-dark .action-button-tabmove:hover { background-color: rgba(48,168,80,0.38) !important; }
+  /* 見出しアイテム level 4〜6 */
+  body.rr-site-dark .heading-item.level-4 { color: rgba(192,232,204,0.72) !important; }
+  body.rr-site-dark .heading-item.level-5 { color: rgba(192,232,204,0.56) !important; }
+  body.rr-site-dark .heading-item.level-6 { color: rgba(192,232,204,0.42) !important; }
+  /* footer */
+  body.rr-site-dark .app-footer a { color: #80c898; }
+  body.rr-site-dark .tab-separator { border-color: rgba(192,232,204,0.18) !important; }
+  /* スクロールバー */
+  body.rr-site-dark ::-webkit-scrollbar-track { background: rgba(0,8,4,0.4); }
+  body.rr-site-dark ::-webkit-scrollbar-thumb { background: rgba(80,200,120,0.30); border-radius: 4px; }
+  body.rr-site-dark ::-webkit-scrollbar-thumb:hover { background: rgba(80,200,120,0.50); }
+  /* ZIP出力テーマ切り替えボタン */
+  body.rr-site-dark .export-theme-toggle-wrap button {
+    background-color: #50c878;
+    color: #0a1410;
+    border: none;
   }
 
   /* ── ライト ── */
@@ -1114,4 +1183,32 @@ input:checked+.slider:before {
   }
   body.rr-site-light button {
     color: rgba(20,14,8,0.80) !important;
+  }
+  /* タブアクティブ */
+  body.rr-site-light .border-indigo-500 { border-color: #c94030 !important; }
+  body.rr-site-light .text-indigo-600   { color: #c94030 !important; }
+  /* ヘッディングナビ */
+  body.rr-site-light .toggle-headings-nav-btn { background-color: #c94030 !important; }
+  body.rr-site-light .headings-nav-panel a { color: #c94030; }
+  /* footer */
+  body.rr-site-light .app-footer a { color: #c94030; }
+  /* ZIP出力テーマ切り替えボタン */
+  body.rr-site-light .export-theme-toggle-wrap button {
+    background-color: #c94030;
+    color: #fff;
+    border: none;
+  }
+
+  /* 切り替えボタン共通スタイル */
+  .export-theme-toggle-wrap {
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+  .export-theme-toggle-wrap button {
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }

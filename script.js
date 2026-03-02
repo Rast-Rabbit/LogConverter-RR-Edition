@@ -6,17 +6,25 @@
   let displayLogData = []; // Holds the unified log data being edited
   let characterSettings = {}; // { speakerName: { displayName, icon, expressions, alignment, color, customTextColor, forceNarration, isNew } }
   let customizationSettings = {
-      normalBubbleColor: '#ffffff', rightBubbleColor: '#dcf8c6',
-      fontSize: 16, backgroundColor: '#f3f4f6',
+      normalBubbleColor: '#ffffff',       // ライト：左向き吹き出し
+      darkNormalBubbleColor: '#1a2e20',   // ダーク：左向き吹き出し（Forest Night）
+      rightBubbleColor: '#dcf8c6',        // ライト：右向き吹き出し
+      darkRightBubbleColor: '#0e2818',    // ダーク：右向き吹き出し（Forest Night）
+      fontSize: 16, backgroundColor: '#f3f4f6',         // ライト：ログ背景
+      darkBgColor: '#101e16',             // ダーク：ログ背景（Forest Night）
       iconSize: 64,
       bubbleMaxWidth: 80, nameBelowIconMode: false,
       fontFamily: 'font-noto-sans', logDisplayHeight: 384,
       skipDeleteConfirm: false,
-      baseTextColor: '#333333',
-      textEdgeColor: '#ffffff', // For text outlines
-      backgroundImage: null, // DataURL of background image
-      backgroundImageFileName: null // Original filename of background image
+      baseTextColor: '#333333',           // ライト：基本文字色
+      darkBaseTextColor: '#c0e8cc',       // ダーク：基本文字色（Forest Night）
+      textEdgeColor: '#ffffff',           // ライト：縁取り色
+      darkTextEdgeColor: 'transparent',   // ダーク：縁取りなし
+      backgroundImage: null,
+      backgroundImageFileName: null,
+      includeThemeToggle: false           // ZIP出力に切り替えボタンを含める
    };
+  let currentTheme = 'light';
    let currentTabFilter = 'all';
    let currentSpeakerFilter = 'all';
    let visibleTabsInAllMode = new Set();
@@ -96,6 +104,12 @@
   const backgroundImageInput = document.getElementById('background-image-input');
   const backgroundImagePreview = document.getElementById('background-image-preview');
   const clearBackgroundImageButton = document.getElementById('clear-background-image-button');
+  const darkNormalColorInput = document.getElementById('dark-normal-bubble-color');
+  const darkRightColorInput  = document.getElementById('dark-right-bubble-color');
+  const darkBgColorInput     = document.getElementById('dark-bg-color');
+  const darkBaseTextColorInput = document.getElementById('dark-base-text-color');
+  const darkTextEdgeColorInput = document.getElementById('dark-text-edge-color');
+  const includeThemeToggleInput = document.getElementById('include-theme-toggle');
 
 
   const headingsNavPanel = document.getElementById('headings-nav-panel');
@@ -217,7 +231,7 @@
       }
       if (cocofoliaFileInput) cocofoliaFileInput.value = null;
       if (tekeyFileInput) tekeyFileInput.value = null;
-      loadCustomization();
+      resetCustomizationDefaults();
       updateCustomizationUI();
   }
 
@@ -337,7 +351,6 @@
        populateCharacterSettingsUI();
        populateTabsUI();
        populateSpeakerFilterUI();
-       loadCustomization();
        updateCustomizationUI();
        renderLog();
    }
@@ -1267,16 +1280,11 @@
        showLoading();
 
        FONT_CLASSES.forEach(cls => logDisplayDiv.classList.remove(cls)); logDisplayDiv.classList.add(customizationSettings.fontFamily);
-       logDisplayDiv.style.fontSize = `${customizationSettings.fontSize}px`; logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`; logDisplayDiv.style.backgroundColor = customizationSettings.backgroundColor; document.body.style.backgroundColor = customizationSettings.backgroundColor;
+       logDisplayDiv.style.fontSize = `${customizationSettings.fontSize}px`; logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`;
        logDisplayDiv.style.setProperty('--bubble-max-width', `${customizationSettings.bubbleMaxWidth}%`);
-       logDisplayDiv.style.setProperty('--bubble-bg-color', customizationSettings.normalBubbleColor);
-       logDisplayDiv.style.setProperty('--bubble-right-bg-color', customizationSettings.rightBubbleColor);
-       logDisplayDiv.style.setProperty('--bubble-arrow-color', customizationSettings.normalBubbleColor);
-       logDisplayDiv.style.setProperty('--bubble-right-arrow-color', customizationSettings.rightBubbleColor);
        logDisplayDiv.style.setProperty('--icon-size', `${customizationSettings.iconSize}px`);
-       logDisplayDiv.style.color = customizationSettings.baseTextColor;
-       logDisplayDiv.style.setProperty('--text-edge-color', customizationSettings.textEdgeColor);
        logDisplayDiv.classList.toggle('name-below-icon-active', customizationSettings.nameBelowIconMode);
+       applyThemeAwareLogStyles();
 
        let filteredItems = displayLogData.filter(item => {
            let itemTab = null, itemSpeaker = null;
@@ -1393,7 +1401,8 @@
 
       const finalAlignment = logItem.alignmentOverride || setting.alignment || 'left';
 
-      const messageTextColor = setting.customTextColor || customizationSettings.baseTextColor;
+      const messageTextColor = setting.customTextColor ||
+        (currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor);
 
       const placeholderSrc = PLACEHOLDER_ICON_URL.replace('64x64', `${customizationSettings.iconSize}x${customizationSettings.iconSize}`);
       let currentIconSrc = placeholderSrc; const iconKey = logItem.iconKey || 'default';
@@ -1430,11 +1439,13 @@
       bubbleDiv.className = 'bubble bubble-left';
       if (finalAlignment === 'right') {
         bubbleDiv.classList.add('bubble-right');
-        bubbleDiv.style.setProperty('--bubble-bg-color', customizationSettings.rightBubbleColor);
-        bubbleDiv.style.setProperty('--bubble-arrow-color', customizationSettings.rightBubbleColor);
+        const rc = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
+        bubbleDiv.style.setProperty('--bubble-bg-color', rc);
+        bubbleDiv.style.setProperty('--bubble-arrow-color', rc);
       } else {
-        bubbleDiv.style.setProperty('--bubble-bg-color', customizationSettings.normalBubbleColor);
-        bubbleDiv.style.setProperty('--bubble-arrow-color', customizationSettings.normalBubbleColor);
+        const nc = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
+        bubbleDiv.style.setProperty('--bubble-bg-color', nc);
+        bubbleDiv.style.setProperty('--bubble-arrow-color', nc);
       }
       bubbleDiv.style.color = messageTextColor;
 
@@ -1564,11 +1575,13 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               bubbleDiv.classList.remove('bubble-right');
               if (finalAlignmentForRender === 'right') {
                   bubbleDiv.classList.add('bubble-right');
-                  bubbleDiv.style.setProperty('--bubble-bg-color', customizationSettings.rightBubbleColor);
-                  bubbleDiv.style.setProperty('--bubble-arrow-color', customizationSettings.rightBubbleColor);
+                  const rc = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
+                  bubbleDiv.style.setProperty('--bubble-bg-color', rc);
+                  bubbleDiv.style.setProperty('--bubble-arrow-color', rc);
               } else {
-                  bubbleDiv.style.setProperty('--bubble-bg-color', customizationSettings.normalBubbleColor);
-                  bubbleDiv.style.setProperty('--bubble-arrow-color', customizationSettings.normalBubbleColor);
+                  const nc = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
+                  bubbleDiv.style.setProperty('--bubble-bg-color', nc);
+                  bubbleDiv.style.setProperty('--bubble-arrow-color', nc);
               }
 
               if (toggleBtn) {
@@ -1618,7 +1631,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       div.className = `heading-item level-${headingItem.level}`;
       div.dataset.itemId = headingItem.id;
       div.dataset.originalIndexContext = headingItem.originalIndex;
-      div.style.color = customizationSettings.baseTextColor;
+      div.style.color = currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor;
 
       const textSpan = document.createElement('span');
       textSpan.textContent = headingItem.text;
@@ -2181,20 +2194,29 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           customizationSettings.skipDeleteConfirm = skipDeleteConfirmToggle.checked;
           customizationSettings.baseTextColor = baseTextColorInput.value;
           customizationSettings.textEdgeColor = textEdgeColorInput.value;
+          customizationSettings.darkNormalBubbleColor = darkNormalColorInput.value;
+          customizationSettings.darkRightBubbleColor  = darkRightColorInput.value;
+          customizationSettings.darkBgColor           = darkBgColorInput.value.trim() || 'rgba(0,0,0,0.30)';
+          customizationSettings.darkBaseTextColor     = darkBaseTextColorInput.value;
+          customizationSettings.darkTextEdgeColor     = darkTextEdgeColorInput.value;
+          customizationSettings.includeThemeToggle    = includeThemeToggleInput.checked;
 
-          saveCustomization(); renderLog();
+          renderLog();
       } catch (error) { console.error("Error applying customization:", error); alert(`カスタマイズ適用エラー: ${error.message}`); }
   }
   function resetCustomizationDefaults() {
       customizationSettings = {
-          normalBubbleColor: '#ffffff', rightBubbleColor: '#dcf8c6',
-          fontSize: 16, backgroundColor: '#f3f4f6',
+          normalBubbleColor: '#ffffff',     darkNormalBubbleColor: '#1a2e20',
+          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: '#0e2818',
+          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: '#101e16',
           iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false,
           fontFamily: 'font-noto-sans', logDisplayHeight: 384,
-          skipDeleteConfirm: false, baseTextColor: '#333333',
-          textEdgeColor: '#ffffff',
+          skipDeleteConfirm: false,
+          baseTextColor: '#333333',         darkBaseTextColor: '#c0e8cc',
+          textEdgeColor: '#ffffff',         darkTextEdgeColor: 'transparent',
           backgroundImage: null,
-          backgroundImageFileName: null
+          backgroundImageFileName: null,
+          includeThemeToggle: false
       };
       delete uploadedFiles[BACKGROUND_IMAGE_KEY];
   }
@@ -2211,6 +2233,12 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           fontSizeSlider.value = customizationSettings.fontSize; fontSizeValueSpan.textContent = customizationSettings.fontSize; backgroundColorInput.value = customizationSettings.backgroundColor; iconSizeSlider.value = customizationSettings.iconSize; iconSizeValueSpan.textContent = customizationSettings.iconSize; bubbleWidthSlider.value = customizationSettings.bubbleMaxWidth; bubbleWidthValueSpan.textContent = customizationSettings.bubbleMaxWidth; nameBelowIconToggle.checked = customizationSettings.nameBelowIconMode; fontFamilySelect.value = customizationSettings.fontFamily; logHeightSlider.value = customizationSettings.logDisplayHeight; logHeightValueSpan.textContent = customizationSettings.logDisplayHeight; skipDeleteConfirmToggle.checked = customizationSettings.skipDeleteConfirm;
           baseTextColorInput.value = customizationSettings.baseTextColor;
           textEdgeColorInput.value = customizationSettings.textEdgeColor;
+          if (darkNormalColorInput) darkNormalColorInput.value = customizationSettings.darkNormalBubbleColor || '#1a2e20';
+          if (darkRightColorInput) darkRightColorInput.value = customizationSettings.darkRightBubbleColor || '#0e2818';
+          if (darkBgColorInput) darkBgColorInput.value = customizationSettings.darkBgColor || '#101e16';
+          if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#c0e8cc';
+          if (darkTextEdgeColorInput) darkTextEdgeColorInput.value = customizationSettings.darkTextEdgeColor || 'transparent';
+          if (includeThemeToggleInput) includeThemeToggleInput.checked = !!customizationSettings.includeThemeToggle;
 
           if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
               backgroundImagePreview.src = customizationSettings.backgroundImage;
@@ -2325,11 +2353,15 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       logFileNameBase = projectData.logFileNameBase || 'loaded_project';
       const defaultCustomization = {
-          normalBubbleColor: '#ffffff', rightBubbleColor: '#dcf8c6',
-          fontSize: 16, backgroundColor: '#f3f4f6', iconSize: 64,
-          bubbleMaxWidth: 80, nameBelowIconMode: false, fontFamily: 'font-noto-sans',
-          logDisplayHeight: 384, skipDeleteConfirm: false, baseTextColor: '#333333',
-          textEdgeColor: '#ffffff', backgroundImage: null, backgroundImageFileName: null, backgroundImagePath: null
+          normalBubbleColor: '#ffffff', darkNormalBubbleColor: '#1a2e20',
+          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: '#0e2818',
+          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: '#101e16',
+          iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false, fontFamily: 'font-noto-sans',
+          logDisplayHeight: 384, skipDeleteConfirm: false,
+          baseTextColor: '#333333', darkBaseTextColor: '#c0e8cc',
+          textEdgeColor: '#ffffff', darkTextEdgeColor: 'transparent',
+          backgroundImage: null, backgroundImageFileName: null, backgroundImagePath: null,
+          includeThemeToggle: false
       };
       customizationSettings = { ...defaultCustomization, ...projectData.customizationSettings };
       if (typeof customizationSettings.textEdgeColor === 'undefined') customizationSettings.textEdgeColor = defaultCustomization.textEdgeColor;
@@ -2696,27 +2728,48 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 </div>`;
       const headingsNavHtml = headingsForNavOutput.length > 0 ? `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></div>` : "";
       const safeHtmlTitle = escapeHtml(htmlTitle); const nameBelowIconBodyClass = nameBelowIconMode ? 'name-below-icon-active' : ''; const fontBodyClass = fontFamily || 'font-noto-sans';
-      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor);
+      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings);
 
-      const bodyClasses = [nameBelowIconBodyClass, fontBodyClass, 'export-body'];
+      const bodyClasses = [nameBelowIconBodyClass, fontBodyClass, 'export-body', 'rr-site-light'];
       if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
           bodyClasses.push('has-background-image');
       }
 
+      const themeToggleBtnHtml = customizationSettings.includeThemeToggle
+        ? `<div class="export-theme-toggle-wrap"><button id="export-theme-btn" onclick="toggleExportTheme()">🌙 ダーク/ライト切替</button></div>`
+        : '';
+
       return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${safeHtmlTitle}</title><link rel="stylesheet" href="style.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet"></head>
-<body class="${bodyClasses.join(' ')}">${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1>${filterControlsHtml}<div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
+<body class="${bodyClasses.join(' ')}">${themeToggleBtnHtml}${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1>${filterControlsHtml}<div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
   }
-  function generateEmbeddedJsForExport(speakerDataForExport, headingsData, baseTextColor, textEdgeColor) {
+  function generateEmbeddedJsForExport(speakerDataForExport, headingsData, baseTextColor, textEdgeColor, customSettings) {
        const speakerMapString = JSON.stringify(speakerDataForExport || {});
        const headingsDataString = JSON.stringify(headingsData || []);
        const baseTextColorString = JSON.stringify(baseTextColor || '#333333');
        const textEdgeColorString = JSON.stringify(textEdgeColor || '#ffffff');
+       const s = customSettings || {};
+       const exportThemeColorsString = JSON.stringify({
+         lightNormal: s.normalBubbleColor || '#ffffff',
+         darkNormal:  s.darkNormalBubbleColor || '#1a2e20',
+         lightRight:  s.rightBubbleColor || '#dcf8c6',
+         darkRight:   s.darkRightBubbleColor || '#0e2818',
+         lightBg:     s.backgroundColor || '#f3f4f6',
+         darkBg:      s.darkBgColor || '#101e16',
+         lightText:   s.baseTextColor || '#333333',
+         darkText:    s.darkBaseTextColor || '#c0e8cc',
+         lightEdge:   s.textEdgeColor || '#ffffff',
+         darkEdge:    s.darkTextEdgeColor || 'transparent'
+       });
 
        return `
 (function() { "use strict";
+// iframe内かどうかを判定して背景透過を切り替える
+if (window.self !== window.top) { document.body.classList.add('rr-in-iframe'); }
 let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsInAllModeExport = new Set();
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
+const exportThemeColors = ${exportThemeColorsString};
+let currentExportTheme = 'light';
 const exportLogTabsNav = document.getElementById('export-log-tabs'); const exportSpeakerFilter = document.getElementById('export-speaker-filter');
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
 const allLogItems = exportLogDisplay ? Array.from(exportLogDisplay.querySelectorAll('.log-item')) : [];
@@ -2742,6 +2795,44 @@ function applyInitialStyles() {
         }
     });
 }
+
+function applyExportTheme(theme) {
+  const isDark = theme === 'dark';
+  const c = exportThemeColors;
+  document.body.classList.remove('rr-site-dark','rr-site-light');
+  document.body.classList.add('rr-site-' + theme);
+  if (exportLogDisplay) {
+    exportLogDisplay.style.backgroundColor = isDark ? c.darkBg : c.lightBg;
+    exportLogDisplay.style.color = isDark ? c.darkText : c.lightText;
+    document.documentElement.style.setProperty('--text-edge-color', isDark ? c.darkEdge : c.lightEdge);
+    exportLogDisplay.querySelectorAll('.bubble.export').forEach(function(b) {
+      const isRight = b.classList.contains('bubble-right');
+      const col = isDark ? (isRight ? c.darkRight : c.darkNormal) : (isRight ? c.lightRight : c.lightNormal);
+      b.style.setProperty('--bubble-bg-color', col);
+      b.style.setProperty('--bubble-arrow-color', col);
+    });
+    exportLogDisplay.querySelectorAll('.message-item.log-item').forEach(function(item) {
+      const sp = item.dataset.speaker;
+      const custom = (speakerSettings[sp] && speakerSettings[sp].customTextColor) ? speakerSettings[sp].customTextColor : null;
+      const tc = custom || (isDark ? c.darkText : c.lightText);
+      item.querySelectorAll('.speaker-name-default,.speaker-name-below-icon,.bubble.export,.narration-container.export')
+        .forEach(function(el) { el.style.color = tc; });
+    });
+  }
+}
+
+function toggleExportTheme() {
+  currentExportTheme = currentExportTheme === 'light' ? 'dark' : 'light';
+  applyExportTheme(currentExportTheme);
+}
+window.toggleExportTheme = toggleExportTheme;
+
+window.addEventListener('message', function(e) {
+  if (e.data && (e.data.theme === 'dark' || e.data.theme === 'light')) {
+    currentExportTheme = e.data.theme;
+    applyExportTheme(e.data.theme);
+  }
+});
 
 function initializeExportFilters() {
     const uniqueTabs = new Set(['all']); const uniqueSpeakers = new Set(['all']); const speakerCounts = {};
@@ -3166,11 +3257,28 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
     .export-headings-nav.open { left: 0px !important; }
     .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
 }
+/* ── rr-site-dark / rr-site-light (export) ── */
+body.rr-site-dark.export-body { color: #c0e8cc; }
+body.rr-site-dark.export-body.rr-in-iframe { background-color: transparent !important; }
+body.rr-site-dark.export-body:not(.rr-in-iframe) { background-color: #0a1410 !important; }
+body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
+.export-theme-toggle-wrap { text-align: center; padding: 8px 0 4px; }
+.export-theme-toggle-wrap button { padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9em; font-weight: bold; transition: background-color 0.3s ease, color 0.3s ease; }
+body.rr-site-light .export-theme-toggle-wrap button { background-color: #c94030; color: #fff; border: none; }
+body.rr-site-dark .export-theme-toggle-wrap button { background-color: #50c878; color: #0a1410; border: none; }
 `;
    }
 
   function initializeApp() {
-      loadCustomization(); updateCustomizationUI();
+      // iframe内かどうかを判定（ダーク時の背景透過切り替えに使用）
+      if (window.self !== window.top) {
+          document.body.classList.add('rr-in-iframe');
+      }
+      document.body.classList.add('rr-site-light');
+      currentTheme = 'light';
+      // 表示カスタマイズはプロジェクトファイルのみで管理（localStorage不使用）
+      try { localStorage.removeItem(LOCALSTORAGE_CUSTOMIZATION_KEY); } catch(_) {}
+      resetCustomizationDefaults(); updateCustomizationUI();
       cocofoliaFileInput.addEventListener('change', handleCocofoliaFileSelect);
       tekeyFileInput.addEventListener('change', handleTekeyFileSelect);
       projectLoadInput.addEventListener('change', handleProjectLoadFile);
@@ -3217,7 +3325,12 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
       textEdgeColorInput.addEventListener('change', applyCustomization);
       backgroundImageInput.addEventListener('change', handleBackgroundImageUpload);
       clearBackgroundImageButton.addEventListener('click', clearBackgroundImage);
-
+      if (darkNormalColorInput) darkNormalColorInput.addEventListener('change', applyCustomization);
+      if (darkRightColorInput) darkRightColorInput.addEventListener('change', applyCustomization);
+      if (darkBgColorInput) darkBgColorInput.addEventListener('change', applyCustomization);
+      if (darkBaseTextColorInput) darkBaseTextColorInput.addEventListener('change', applyCustomization);
+      if (darkTextEdgeColorInput) darkTextEdgeColorInput.addEventListener('change', applyCustomization);
+      if (includeThemeToggleInput) includeThemeToggleInput.addEventListener('change', applyCustomization);
 
       switchSettingsTab('settings'); hideLoading(); disableControls(); updateHeadingsNav();
   }
@@ -3229,6 +3342,40 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
       if (activePanel) activePanel.classList.remove('hidden'); if (activeButton) { activeButton.classList.add('border-indigo-500', 'text-indigo-600'); activeButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'); activeButton.setAttribute('aria-current', 'page'); }
   }
 
+  function applyTheme(theme) {
+    document.body.classList.remove('rr-site-dark', 'rr-site-light');
+    document.body.classList.add('rr-site-' + theme);
+    currentTheme = theme;
+    applyThemeAwareLogStyles();
+    if (displayLogData.length > 0) renderLog();
+  }
+
+  function applyThemeAwareLogStyles() {
+    if (!logDisplayDiv) return;
+    const isDark = currentTheme === 'dark';
+
+    // ログ背景
+    logDisplayDiv.style.backgroundColor = isDark
+      ? (customizationSettings.darkBgColor || 'rgba(0,0,0,0.30)')
+      : customizationSettings.backgroundColor;
+
+    // 吹き出し色
+    const nc = isDark ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
+    logDisplayDiv.style.setProperty('--bubble-bg-color', nc);
+    logDisplayDiv.style.setProperty('--bubble-arrow-color', nc);
+    const rc = isDark ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
+    logDisplayDiv.style.setProperty('--bubble-right-bg-color', rc);
+    logDisplayDiv.style.setProperty('--bubble-right-arrow-color', rc);
+
+    // テキスト色・縁取り色
+    logDisplayDiv.style.color = isDark ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor;
+    logDisplayDiv.style.setProperty('--text-edge-color',
+      isDark ? customizationSettings.darkTextEdgeColor : customizationSettings.textEdgeColor);
+  }
+
+  // グローバルブリッジ（postMessage受信用IIFE から呼び出す）
+  window.__rrApplyTheme = applyTheme;
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeApp); else initializeApp();
 
 })();
@@ -3238,14 +3385,10 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
      ===================================================== */
      
 (function () {
-    function applyTheme(theme) {
-      document.body.classList.remove('rr-site-dark', 'rr-site-light');
-      document.body.classList.add('rr-site-' + theme);
-    }
-
     window.addEventListener('message', function (event) {
       if (event.data && (event.data.theme === 'dark' || event.data.theme === 'light')) {
-        applyTheme(event.data.theme);
+        // applyTheme is defined inside the main IIFE; call via global bridge
+        if (typeof window.__rrApplyTheme === 'function') window.__rrApplyTheme(event.data.theme);
       }
     });
   })();
