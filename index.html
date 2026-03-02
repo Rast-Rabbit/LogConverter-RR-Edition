@@ -21,6 +21,10 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
+    <!-- 【暫定】デザイン確認用ダーク/ライト切り替えボタン（後で削除） -->
+    <div id="temp-theme-toggle-wrap" style="position:fixed;top:10px;right:10px;z-index:9999;">
+        <button onclick="if(typeof window.__rrApplyTheme==='function'){window.__rrApplyTheme(document.body.classList.contains('rr-site-dark')?'light':'dark');this.textContent=document.body.classList.contains('rr-site-dark')?'☀ ライト':'🌙 ダーク';}" style="padding:5px 14px;border-radius:20px;font-size:0.82em;font-weight:bold;cursor:pointer;background:#FF7A5C;color:#1a1030;border:2px solid #d95030;box-shadow:0 2px 8px rgba(0,0,0,0.35);">🌙 ダーク</button>
+    </div>
     <!-- Headings Navigation Panel -->
     <div id="headings-nav-panel" class="headings-nav-panel">
         <button id="toggle-headings-nav-btn" class="toggle-headings-nav-btn" title="見出し一覧の表示/非表示">見出し</button>
@@ -100,14 +104,14 @@
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2 grid grid-cols-2 gap-3">
                         <div><label for="bubble-normal-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色（ライト時）:</label><input type="color" id="bubble-normal-color" value="#ffffff" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
-                        <div><label for="dark-normal-bubble-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色（ダーク時）:</label><input type="color" id="dark-normal-bubble-color" value="#1a2e20" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="dark-normal-bubble-color" class="block text-sm font-medium text-gray-700">左向き吹き出し色（ダーク時）:</label><div class="flex items-center gap-1.5 mt-1"><input type="text" id="dark-normal-bubble-color" value="rgba(255,255,255,0.09)" placeholder="例: rgba(255,255,255,0.09)" class="block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"><span class="color-swatch-preview" id="dark-normal-bubble-color-swatch"></span></div></div>
                         <div><label for="bubble-right-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ライト時）:</label><input type="color" id="bubble-right-color" value="#dcf8c6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
-                        <div><label for="dark-right-bubble-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ダーク時）:</label><input type="color" id="dark-right-bubble-color" value="#0e2818" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
+                        <div><label for="dark-right-bubble-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ダーク時）:</label><div class="flex items-center gap-1.5 mt-1"><input type="text" id="dark-right-bubble-color" value="rgba(200,240,120,0.18)" placeholder="例: rgba(200,240,120,0.18)" class="block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"><span class="color-swatch-preview" id="dark-right-bubble-color-swatch"></span></div></div>
                     </div>
                     <div><label for="font-size-slider" class="block text-sm font-medium text-gray-700">フォントサイズ: <span id="font-size-value">16</span>px</label><input type="range" id="font-size-slider" min="10" max="24" value="16" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2 grid grid-cols-2 gap-3">
                         <div><label for="background-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ライト時）:</label><input type="color" id="background-color" value="#f3f4f6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
-                        <div><label for="dark-bg-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ダーク時）:</label><input type="text" id="dark-bg-color" value="#101e16" placeholder="例: #101e16 or rgba(0,0,0,0.30)" class="mt-1 block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"></div>
+                        <div><label for="dark-bg-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ダーク時）:</label><div class="flex items-center gap-1.5 mt-1"><input type="text" id="dark-bg-color" value="rgba(0,0,0,0.30)" placeholder="例: rgba(0,0,0,0.30)" class="block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"><span class="color-swatch-preview" id="dark-bg-color-swatch"></span></div></div>
                     </div>
                     <div><label for="icon-size-slider" class="block text-sm font-medium text-gray-700">アイコンサイズ: <span id="icon-size-value">64</span>px</label><input type="range" id="icon-size-slider" min="24" max="128" value="64" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-1"><label for="bubble-width-slider" class="block text-sm font-medium text-gray-700">吹き出し最大幅: <span id="bubble-width-value">80</span>%</label><input type="range" id="bubble-width-slider" min="30" max="100" value="80" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
@@ -120,7 +124,7 @@
                         </div>
                         <div>
                             <label for="dark-base-text-color" class="block text-sm font-medium text-gray-700">基本文字色（ダーク時）:</label>
-                            <input type="color" id="dark-base-text-color" value="#c0e8cc" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                            <input type="color" id="dark-base-text-color" value="#e8e8e8" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5">
                         </div>
                         <div>
                             <label for="text-edge-color-input" class="block text-sm font-medium text-gray-700">文字縁取り色（ライト時）:</label>
@@ -128,7 +132,7 @@
                         </div>
                         <div>
                             <label for="dark-text-edge-color" class="block text-sm font-medium text-gray-700">文字縁取り色（ダーク時）:</label>
-                            <input type="text" id="dark-text-edge-color" value="transparent" placeholder="例: transparent / #000000" class="mt-1 block w-full h-8 rounded border border-gray-300 p-1.5 text-sm">
+                            <div class="flex items-center gap-1.5 mt-1"><input type="text" id="dark-text-edge-color" value="transparent" placeholder="例: transparent / #000000" class="block w-full h-8 rounded border border-gray-300 p-1.5 text-sm"><span class="color-swatch-preview" id="dark-text-edge-color-swatch"></span></div>
                         </div>
                     </div>
                     <div class="md:col-span-2">
@@ -148,15 +152,14 @@
                         </label>
                     </div>
                     <div class="md:col-span-2 flex items-center space-x-2">
-                        <label for="include-theme-toggle" class="text-sm font-medium text-gray-700">ZIP出力にダーク/ライト切り替えボタンを含める:</label>
+                        <label for="include-theme-toggle" class="text-sm font-medium text-gray-700">ZIP出力にダーク/ライト切り替えボタンを含めない:</label>
                         <label class="switch">
                             <input type="checkbox" id="include-theme-toggle">
                             <span class="slider"></span>
                         </label>
                     </div>
                  </div>
-                 <button id="apply-customization" class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">カスタマイズ適用</button>
-                 <button id="reset-customization" class="mt-4 ml-2 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">リセット</button>
+                 <button id="reset-customization" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">設定を初期値にリセット</button>
             </div>
         </div>
 

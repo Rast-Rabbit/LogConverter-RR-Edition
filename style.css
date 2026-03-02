@@ -1074,65 +1074,136 @@ input:checked+.slider:before {
 
 .sortable-ghost { opacity: 0.35; }
 
+/* カラースウォッチ（rgba対応プレビュー） */
+.color-swatch-preview {
+    --swatch-color: transparent;
+    position: relative;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.25);
+    background-image: linear-gradient(45deg, #bbb 25%, transparent 25%),
+                      linear-gradient(135deg, #bbb 25%, transparent 25%),
+                      linear-gradient(225deg, #bbb 25%, transparent 25%),
+                      linear-gradient(315deg, #bbb 25%, transparent 25%);
+    background-color: white;
+    background-size: 8px 8px;
+    background-position: 0 0, 4px 0, 4px -4px, 0px 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: default;
+}
+.color-swatch-preview::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--swatch-color, transparent);
+}
 
 
   /* =====================================================
      サイト統合テーマ（rr-site-dark / rr-site-light）
-     スタンドアロン時はこのクラスが付かないので影響なし
      ===================================================== */
 
-  /* ── ダーク（Forest Night） ── */
+  /* ── 背景画像（ダーク単体表示時）── */
+  html:has(body.rr-site-dark:not(.rr-in-iframe)) {
+    background-image: url('img/bg.webp');
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #000;
+  }
+  @supports (-webkit-touch-callout: none) {
+    html:has(body.rr-site-dark:not(.rr-in-iframe)) { background-attachment: scroll; }
+  }
+
+  /* ── ダーク ── */
   body.rr-site-dark {
-    color: #c0e8cc;
+    color: #e8e8e8;
   }
   /* iframe内: 親の背景を透過 */
   body.rr-site-dark.rr-in-iframe {
     background-color: transparent !important;
   }
-  /* 単体表示時: Forest Nightのページ背景色 */
+  /* 単体表示時: 背景は html の bg.webp に委ねる + 暗幕グラデーション */
   body.rr-site-dark:not(.rr-in-iframe) {
-    background-color: #0a1410 !important;
+    background-color: transparent !important;
   }
-  /* 内側パネル: ページ背景より少し暗く */
-  body.rr-site-dark .bg-white,
+  body.rr-site-dark:not(.rr-in-iframe)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.28));
+    z-index: -1;
+  }
+  /* メインコンテナ（bg-white = 最外殻ラッパー）: ガラスブラック */
+  body.rr-site-dark .bg-white {
+    background-color: rgba(0,0,0,0.52) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    box-shadow: 0 4px 28px rgba(0,0,0,0.60) !important;
+  }
+  /* 内側パネル（bg-gray-50, bg-gray-100）: 半透明ダーク */
   body.rr-site-dark .bg-gray-50,
-  body.rr-site-dark .bg-gray-100 { background-color: rgba(0,0,0,0.35) !important; }
-  body.rr-site-dark .bg-blue-50  { background-color: rgba(0,0,0,0.30) !important; }
+  body.rr-site-dark .bg-gray-100 {
+    background-color: rgba(0,0,0,0.40) !important;
+    border-color: rgba(255,255,255,0.14) !important;
+  }
+  body.rr-site-dark .bg-blue-50  { background-color: rgba(0,0,0,0.35) !important; }
   body.rr-site-dark .bg-gray-900 { background-color: rgba(0,0,0,0.55) !important; }
   body.rr-site-dark .bg-gray-800 { background-color: rgba(0,0,0,0.42) !important; }
-  body.rr-site-dark .bg-gray-700 { background-color: rgba(192,232,204,0.07) !important; }
+  body.rr-site-dark .bg-gray-700 { background-color: rgba(255,255,255,0.06) !important; }
+  /* テキスト */
   body.rr-site-dark .text-gray-800,
-  body.rr-site-dark .text-gray-700 { color: rgba(192,232,204,0.85) !important; }
+  body.rr-site-dark .text-gray-700 { color: rgba(232,232,232,0.85) !important; }
   body.rr-site-dark .text-gray-600,
-  body.rr-site-dark .text-gray-500 { color: rgba(192,232,204,0.60) !important; }
+  body.rr-site-dark .text-gray-500 { color: rgba(232,232,232,0.60) !important; }
+  /* ボーダー */
   body.rr-site-dark .border-gray-200,
   body.rr-site-dark .border-gray-300,
-  body.rr-site-dark .border-dashed { border-color: rgba(192,232,204,0.15) !important; }
-  /* タブアクティブ */
-  body.rr-site-dark .border-indigo-500 { border-color: #50c878 !important; }
-  body.rr-site-dark .text-indigo-600   { color: #50c878 !important; }
+  body.rr-site-dark .border-dashed { border-color: rgba(255,255,255,0.14) !important; }
+  /* タブアクティブ: インジゴ */
+  body.rr-site-dark .border-indigo-500 { border-color: #8880E8 !important; }
+  body.rr-site-dark .text-indigo-600   { color: #8880E8 !important; }
+  /* フォーム */
   body.rr-site-dark input,
   body.rr-site-dark textarea,
   body.rr-site-dark select {
-    background-color: rgba(0,0,0,0.35) !important;
-    border-color: rgba(192,232,204,0.20) !important;
-    color: #c0e8cc !important;
+    background-color: rgba(0,0,0,0.40) !important;
+    border-color: rgba(255,255,255,0.18) !important;
+    color: #e8e8e8 !important;
+  }
+  /* 吹き出し: ガラス効果 */
+  body.rr-site-dark .bubble {
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.40) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
   /* ヘッディングナビ */
-  body.rr-site-dark .headings-nav-panel { background: rgba(0,8,4,0.75); }
-  body.rr-site-dark .toggle-headings-nav-btn { background-color: #50c878 !important; color: #0a1410 !important; }
-  body.rr-site-dark .headings-nav-panel a { color: #80c898; }
-  body.rr-site-dark .headings-nav-panel a:hover { color: #a0e0b0; }
+  body.rr-site-dark .headings-nav-panel { background: rgba(0,0,0,0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  body.rr-site-dark .toggle-headings-nav-btn { background-color: #FF7A5C !important; color: #1a1030 !important; }
+  body.rr-site-dark .headings-nav-panel a { color: #b0aeee; }
+  body.rr-site-dark .headings-nav-panel a:hover { color: #cccaf8; }
   /* モーダル */
   body.rr-site-dark .modal-content {
-    background-color: rgba(5,12,8,0.95) !important;
-    color: #c0e8cc;
+    background-color: rgba(0,0,0,0.88) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    color: #e8e8e8;
   }
-  body.rr-site-dark .modal-content label { color: rgba(192,232,204,0.78) !important; }
+  body.rr-site-dark .modal-content label { color: rgba(232,232,232,0.78) !important; }
   /* ドロップダウン */
   body.rr-site-dark .icon-select-dropdown {
-    background-color: rgba(5,12,8,0.95) !important;
-    border-color: rgba(192,232,204,0.18) !important;
+    background-color: rgba(0,0,0,0.88) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-color: rgba(255,255,255,0.18) !important;
   }
   /* アクションボタン */
   body.rr-site-dark .action-button-insert { background-color: rgba(59,130,246,0.28) !important; color: #93c5fd !important; }
@@ -1141,27 +1212,39 @@ input:checked+.slider:before {
   body.rr-site-dark .action-button-delete:hover { background-color: rgba(239,68,68,0.48) !important; }
   body.rr-site-dark .action-button-edit { background-color: rgba(234,179,8,0.22) !important; color: #fde047 !important; }
   body.rr-site-dark .action-button-edit:hover { background-color: rgba(234,179,8,0.42) !important; }
-  body.rr-site-dark .action-button-custom { background-color: rgba(80,200,120,0.20) !important; color: #80c898 !important; }
-  body.rr-site-dark .action-button-custom:hover { background-color: rgba(80,200,120,0.38) !important; }
-  body.rr-site-dark .action-button-tabmove { background-color: rgba(48,168,80,0.20) !important; color: #86efac !important; }
-  body.rr-site-dark .action-button-tabmove:hover { background-color: rgba(48,168,80,0.38) !important; }
-  /* 見出しアイテム level 4〜6 */
-  body.rr-site-dark .heading-item.level-4 { color: rgba(192,232,204,0.72) !important; }
-  body.rr-site-dark .heading-item.level-5 { color: rgba(192,232,204,0.56) !important; }
-  body.rr-site-dark .heading-item.level-6 { color: rgba(192,232,204,0.42) !important; }
+  body.rr-site-dark .action-button-custom { background-color: rgba(136,128,232,0.20) !important; color: #b0aeee !important; }
+  body.rr-site-dark .action-button-custom:hover { background-color: rgba(136,128,232,0.38) !important; }
+  body.rr-site-dark .action-button-tabmove { background-color: rgba(136,128,232,0.15) !important; color: #b0aeee !important; }
+  body.rr-site-dark .action-button-tabmove:hover { background-color: rgba(136,128,232,0.32) !important; }
+  /* 見出しアイテム: level-1=オレンジ(メインカラー), level-2以下=インジゴ系 */
+  body.rr-site-dark .heading-item.level-1 { color: #FF7A5C !important; border-bottom-color: #FF7A5C !important; }
+  body.rr-site-dark .heading-item.level-2 { color: #8880E8 !important; border-bottom-color: rgba(136,128,232,0.45) !important; }
+  body.rr-site-dark .heading-item.level-3 { color: rgba(136,128,232,0.88) !important; }
+  body.rr-site-dark .heading-item.level-4 { color: rgba(136,128,232,0.80) !important; }
+  body.rr-site-dark .heading-item.level-5 { color: rgba(136,128,232,0.60) !important; }
+  body.rr-site-dark .heading-item.level-6 { color: rgba(136,128,232,0.44) !important; }
   /* footer */
-  body.rr-site-dark .app-footer a { color: #80c898; }
-  body.rr-site-dark .tab-separator { border-color: rgba(192,232,204,0.18) !important; }
+  body.rr-site-dark .app-footer a { color: #FF7A5C; }
+  body.rr-site-dark .tab-separator { border-color: rgba(255,255,255,0.15) !important; }
   /* スクロールバー */
-  body.rr-site-dark ::-webkit-scrollbar-track { background: rgba(0,8,4,0.4); }
-  body.rr-site-dark ::-webkit-scrollbar-thumb { background: rgba(80,200,120,0.30); border-radius: 4px; }
-  body.rr-site-dark ::-webkit-scrollbar-thumb:hover { background: rgba(80,200,120,0.50); }
+  body.rr-site-dark ::-webkit-scrollbar-track { background: rgba(0,0,0,0.4); }
+  body.rr-site-dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
+  body.rr-site-dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.38); }
   /* ZIP出力テーマ切り替えボタン */
   body.rr-site-dark .export-theme-toggle-wrap button {
-    background-color: #50c878;
-    color: #0a1410;
+    background-color: #FF7A5C;
+    color: #1a1030;
     border: none;
   }
+  /* 主要アクションボタン: file-input-label と同じ質感（完全不透明） */
+  body.rr-site-dark #save-settings-button  { background-color: #2563eb !important; color: #fff !important; border: none !important; }
+  body.rr-site-dark #load-settings-button  { background-color: #4b5563 !important; color: #fff !important; border: none !important; }
+  body.rr-site-dark #save-project-button   { background-color: #16a34a !important; color: #fff !important; border: none !important; }
+  body.rr-site-dark #export-zip-button     { background-color: #4f46e5 !important; color: #fff !important; border: none !important; }
+  body.rr-site-dark #export-html-button    { background-color: #6366f1 !important; color: #fff !important; border: none !important; }
+  /* ツールタイトル・セクション見出し: オレンジアクセント */
+  body.rr-site-dark .container > h1 { color: #FF7A5C !important; }
+  body.rr-site-dark [role="tabpanel"] h3 { color: #FF7A5C !important; }
 
   /* ── ライト ── */
   body.rr-site-light {

@@ -7,22 +7,22 @@
   let characterSettings = {}; // { speakerName: { displayName, icon, expressions, alignment, color, customTextColor, forceNarration, isNew } }
   let customizationSettings = {
       normalBubbleColor: '#ffffff',       // ライト：左向き吹き出し
-      darkNormalBubbleColor: '#1a2e20',   // ダーク：左向き吹き出し（Forest Night）
+      darkNormalBubbleColor: 'rgba(255,255,255,0.09)',   // ダーク：左向き吹き出し（ガラス）
       rightBubbleColor: '#dcf8c6',        // ライト：右向き吹き出し
-      darkRightBubbleColor: '#0e2818',    // ダーク：右向き吹き出し（Forest Night）
+      darkRightBubbleColor: 'rgba(200,240,120,0.18)',    // ダーク：右向き吹き出し（ガラス）
       fontSize: 16, backgroundColor: '#f3f4f6',         // ライト：ログ背景
-      darkBgColor: '#101e16',             // ダーク：ログ背景（Forest Night）
+      darkBgColor: 'rgba(0,0,0,0.30)',             // ダーク：ログ背景（半透明ガラス）
       iconSize: 64,
       bubbleMaxWidth: 80, nameBelowIconMode: false,
       fontFamily: 'font-noto-sans', logDisplayHeight: 384,
       skipDeleteConfirm: false,
       baseTextColor: '#333333',           // ライト：基本文字色
-      darkBaseTextColor: '#c0e8cc',       // ダーク：基本文字色（Forest Night）
+      darkBaseTextColor: '#e8e8e8',       // ダーク：基本文字色（Forest Night）
       textEdgeColor: '#ffffff',           // ライト：縁取り色
       darkTextEdgeColor: 'transparent',   // ダーク：縁取りなし
       backgroundImage: null,
       backgroundImageFileName: null,
-      includeThemeToggle: false           // ZIP出力に切り替えボタンを含める
+      includeThemeToggle: false           // ZIP出力に切り替えボタンを含めない（false=含める）
    };
   let currentTheme = 'light';
    let currentTabFilter = 'all';
@@ -87,7 +87,6 @@
   const bubbleWidthValueSpan = document.getElementById('bubble-width-value');
   const nameBelowIconToggle = document.getElementById('name-below-icon-toggle');
   const fontFamilySelect = document.getElementById('font-family-select');
-  const applyCustomizationButton = document.getElementById('apply-customization');
   const resetCustomizationButton = document.getElementById('reset-customization');
   const insertImageInput = document.getElementById('insert-image-input');
   const exportHtmlTitleInput = document.getElementById('export-html-title');
@@ -2206,13 +2205,13 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   }
   function resetCustomizationDefaults() {
       customizationSettings = {
-          normalBubbleColor: '#ffffff',     darkNormalBubbleColor: '#1a2e20',
-          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: '#0e2818',
-          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: '#101e16',
+          normalBubbleColor: '#ffffff',     darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
+          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: 'rgba(200,240,120,0.18)',
+          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false,
           fontFamily: 'font-noto-sans', logDisplayHeight: 384,
           skipDeleteConfirm: false,
-          baseTextColor: '#333333',         darkBaseTextColor: '#c0e8cc',
+          baseTextColor: '#333333',         darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff',         darkTextEdgeColor: 'transparent',
           backgroundImage: null,
           backgroundImageFileName: null,
@@ -2233,10 +2232,10 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           fontSizeSlider.value = customizationSettings.fontSize; fontSizeValueSpan.textContent = customizationSettings.fontSize; backgroundColorInput.value = customizationSettings.backgroundColor; iconSizeSlider.value = customizationSettings.iconSize; iconSizeValueSpan.textContent = customizationSettings.iconSize; bubbleWidthSlider.value = customizationSettings.bubbleMaxWidth; bubbleWidthValueSpan.textContent = customizationSettings.bubbleMaxWidth; nameBelowIconToggle.checked = customizationSettings.nameBelowIconMode; fontFamilySelect.value = customizationSettings.fontFamily; logHeightSlider.value = customizationSettings.logDisplayHeight; logHeightValueSpan.textContent = customizationSettings.logDisplayHeight; skipDeleteConfirmToggle.checked = customizationSettings.skipDeleteConfirm;
           baseTextColorInput.value = customizationSettings.baseTextColor;
           textEdgeColorInput.value = customizationSettings.textEdgeColor;
-          if (darkNormalColorInput) darkNormalColorInput.value = customizationSettings.darkNormalBubbleColor || '#1a2e20';
-          if (darkRightColorInput) darkRightColorInput.value = customizationSettings.darkRightBubbleColor || '#0e2818';
-          if (darkBgColorInput) darkBgColorInput.value = customizationSettings.darkBgColor || '#101e16';
-          if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#c0e8cc';
+          if (darkNormalColorInput) darkNormalColorInput.value = customizationSettings.darkNormalBubbleColor || 'rgba(255,255,255,0.09)';
+          if (darkRightColorInput) darkRightColorInput.value = customizationSettings.darkRightBubbleColor || 'rgba(200,240,120,0.18)';
+          if (darkBgColorInput) darkBgColorInput.value = customizationSettings.darkBgColor || 'rgba(0,0,0,0.30)';
+          if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#e8e8e8';
           if (darkTextEdgeColorInput) darkTextEdgeColorInput.value = customizationSettings.darkTextEdgeColor || 'transparent';
           if (includeThemeToggleInput) includeThemeToggleInput.checked = !!customizationSettings.includeThemeToggle;
 
@@ -2248,6 +2247,18 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               backgroundImagePreview.classList.remove('has-image');
           }
        } catch (error) { console.error("Error updating customization UI:", error); }
+       refreshColorSwatches();
+   }
+   function refreshColorSwatches() {
+       [['dark-normal-bubble-color', 'dark-normal-bubble-color-swatch'],
+        ['dark-right-bubble-color',  'dark-right-bubble-color-swatch'],
+        ['dark-bg-color',            'dark-bg-color-swatch'],
+        ['dark-text-edge-color',     'dark-text-edge-color-swatch'],
+       ].forEach(([inputId, swatchId]) => {
+           const input = document.getElementById(inputId);
+           const swatch = document.getElementById(swatchId);
+           if (input && swatch) swatch.style.setProperty('--swatch-color', input.value.trim() || 'transparent');
+       });
    }
    function saveCustomization() { try { localStorage.setItem(LOCALSTORAGE_CUSTOMIZATION_KEY, JSON.stringify(customizationSettings)); } catch (error) { console.error("Error saving customization settings to LocalStorage:", error); } }
    function loadCustomization() {
@@ -2353,12 +2364,12 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       logFileNameBase = projectData.logFileNameBase || 'loaded_project';
       const defaultCustomization = {
-          normalBubbleColor: '#ffffff', darkNormalBubbleColor: '#1a2e20',
-          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: '#0e2818',
-          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: '#101e16',
+          normalBubbleColor: '#ffffff', darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
+          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: 'rgba(200,240,120,0.18)',
+          fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false, fontFamily: 'font-noto-sans',
           logDisplayHeight: 384, skipDeleteConfirm: false,
-          baseTextColor: '#333333', darkBaseTextColor: '#c0e8cc',
+          baseTextColor: '#333333', darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff', darkTextEdgeColor: 'transparent',
           backgroundImage: null, backgroundImageFileName: null, backgroundImagePath: null,
           includeThemeToggle: false
@@ -2507,6 +2518,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                if (!(fileObject instanceof Blob)) continue; const imagePath = getImagePathForKey(key, fileObject);
                if (imagePath && !addedFiles.has(imagePath)) { try { imgFolder.file(imagePath.substring(PROJECT_IMAGES_FOLDER.length), fileObject); addedFiles.add(imagePath); } catch (zipAddError) { console.error(`Error adding file ${imagePath} to ZIP:`, zipAddError); } }
            }
+           // ダークモード背景 img/bg.webp を同梱
+           try {
+               const bgResp = await fetch('./img/bg.webp');
+               if (bgResp.ok) { zip.folder('img').file('bg.webp', await bgResp.blob()); }
+           } catch(_) {}
            const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
            const downloadUrl = URL.createObjectURL(zipBlob); const link = document.createElement('a'); link.href = downloadUrl; link.download = zipFilename; document.body.appendChild(link); link.click(); document.body.removeChild(link); setTimeout(() => URL.revokeObjectURL(downloadUrl), 2000);
            alert(`エクスポート完了: ${link.download}`);
@@ -2735,8 +2751,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           bodyClasses.push('has-background-image');
       }
 
-      const themeToggleBtnHtml = customizationSettings.includeThemeToggle
-        ? `<div class="export-theme-toggle-wrap"><button id="export-theme-btn" onclick="toggleExportTheme()">🌙 ダーク/ライト切替</button></div>`
+      const themeToggleBtnHtml = !customizationSettings.includeThemeToggle
+        ? `<div class="export-theme-toggle-wrap"><button id="export-theme-btn" onclick="toggleExportTheme()">🌙</button></div>`
         : '';
 
       return `<!DOCTYPE html>
@@ -2751,13 +2767,13 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
        const s = customSettings || {};
        const exportThemeColorsString = JSON.stringify({
          lightNormal: s.normalBubbleColor || '#ffffff',
-         darkNormal:  s.darkNormalBubbleColor || '#1a2e20',
+         darkNormal:  s.darkNormalBubbleColor || 'rgba(255,255,255,0.09)',
          lightRight:  s.rightBubbleColor || '#dcf8c6',
-         darkRight:   s.darkRightBubbleColor || '#0e2818',
+         darkRight:   s.darkRightBubbleColor || 'rgba(200,240,120,0.18)',
          lightBg:     s.backgroundColor || '#f3f4f6',
-         darkBg:      s.darkBgColor || '#101e16',
+         darkBg:      s.darkBgColor || 'rgba(0,0,0,0.30)',
          lightText:   s.baseTextColor || '#333333',
-         darkText:    s.darkBaseTextColor || '#c0e8cc',
+         darkText:    s.darkBaseTextColor || '#e8e8e8',
          lightEdge:   s.textEdgeColor || '#ffffff',
          darkEdge:    s.darkTextEdgeColor || 'transparent'
        });
@@ -2770,6 +2786,13 @@ let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsI
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
 const exportThemeColors = ${exportThemeColorsString};
 let currentExportTheme = 'light';
+// toggleExportTheme は function 宣言のためホイストされる。early return より前に window へ公開
+window.toggleExportTheme = function() {
+  currentExportTheme = currentExportTheme === 'light' ? 'dark' : 'light';
+  applyExportTheme(currentExportTheme);
+  var btn = document.getElementById('export-theme-btn');
+  if (btn) btn.textContent = currentExportTheme === 'dark' ? '☀' : '🌙';
+};
 const exportLogTabsNav = document.getElementById('export-log-tabs'); const exportSpeakerFilter = document.getElementById('export-speaker-filter');
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
 const allLogItems = exportLogDisplay ? Array.from(exportLogDisplay.querySelectorAll('.log-item')) : [];
@@ -2825,7 +2848,6 @@ function toggleExportTheme() {
   currentExportTheme = currentExportTheme === 'light' ? 'dark' : 'light';
   applyExportTheme(currentExportTheme);
 }
-window.toggleExportTheme = toggleExportTheme;
 
 window.addEventListener('message', function(e) {
   if (e.data && (e.data.theme === 'dark' || e.data.theme === 'light')) {
@@ -3025,7 +3047,7 @@ else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadings
       }
 
 
-      const logContainerBg = (backgroundImage && backgroundImageExportPath) ? 'rgba(255, 255, 255, 0.85)' : (logDisplayDiv.style.backgroundColor || '#ffffff');
+      const logContainerBg = (backgroundImage && backgroundImageExportPath) ? 'rgba(255, 255, 255, 0.85)' : (currentCustomization.backgroundColor || '#f3f4f6');
 
 
        return `
@@ -3258,14 +3280,42 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
     .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
 }
 /* ── rr-site-dark / rr-site-light (export) ── */
-body.rr-site-dark.export-body { color: #c0e8cc; }
+html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
+    background-image: url('img/bg.webp');
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #000;
+}
+@supports (-webkit-touch-callout: none) {
+    html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
+        background-attachment: scroll;
+    }
+}
+body.rr-site-dark.export-body { color: #e8e8e8; }
 body.rr-site-dark.export-body.rr-in-iframe { background-color: transparent !important; }
-body.rr-site-dark.export-body:not(.rr-in-iframe) { background-color: #0a1410 !important; }
+body.rr-site-dark.export-body:not(.rr-in-iframe) { background-color: transparent !important; }
+body.rr-site-dark.export-body:not(.rr-in-iframe)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.28));
+    z-index: -1;
+}
+body.rr-site-dark.export-body .log-export-container {
+    background-color: rgba(0,0,0,0.52) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 4px 28px rgba(0,0,0,0.60);
+}
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
-.export-theme-toggle-wrap { text-align: center; padding: 8px 0 4px; }
-.export-theme-toggle-wrap button { padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9em; font-weight: bold; transition: background-color 0.3s ease, color 0.3s ease; }
-body.rr-site-light .export-theme-toggle-wrap button { background-color: #c94030; color: #fff; border: none; }
-body.rr-site-dark .export-theme-toggle-wrap button { background-color: #50c878; color: #0a1410; border: none; }
+.export-theme-toggle-wrap { position: fixed; top: 10px; right: 10px; z-index: 9999; }
+.export-theme-toggle-wrap button { padding: 5px 14px; border-radius: 20px; cursor: pointer; font-size: 0.82em; font-weight: bold; transition: background-color 0.3s ease, color 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+body.rr-site-light .export-theme-toggle-wrap button { background-color: #c94030; color: #fff; border: 2px solid #a03020; }
+body.rr-site-dark .export-theme-toggle-wrap button { background-color: #FF7A5C; color: #1a1030; border: 2px solid #d95030; }
 `;
    }
 
@@ -3286,7 +3336,6 @@ body.rr-site-dark .export-theme-toggle-wrap button { background-color: #50c878; 
       customizeTabButton.addEventListener('click', () => switchSettingsTab('customize'));
       saveSettingsButton.addEventListener('click', saveCharacterSettings);
       loadSettingsButton.addEventListener('click', loadCharacterSettings);
-      applyCustomizationButton.addEventListener('click', applyCustomization);
       resetCustomizationButton.addEventListener('click', resetCustomization);
       logTabsNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) handleTabChange(e.target.dataset.tab); });
       speakerFilterSelect.addEventListener('change', handleSpeakerFilterChange);
@@ -3306,7 +3355,7 @@ body.rr-site-dark .export-theme-toggle-wrap button { background-color: #50c878; 
       bubbleWidthSlider.addEventListener('input', () => { bubbleWidthValueSpan.textContent = bubbleWidthSlider.value; });
       logHeightSlider.addEventListener('input', () => { logHeightValueSpan.textContent = logHeightSlider.value; });
 
-      const sliderChangeApply = () => { if(!applyCustomizationButton.disabled) applyCustomization();};
+      const sliderChangeApply = () => applyCustomization();
       fontSizeSlider.addEventListener('change', sliderChangeApply);
       iconSizeSlider.addEventListener('change', sliderChangeApply);
       bubbleWidthSlider.addEventListener('change', sliderChangeApply);
@@ -3331,6 +3380,14 @@ body.rr-site-dark .export-theme-toggle-wrap button { background-color: #50c878; 
       if (darkBaseTextColorInput) darkBaseTextColorInput.addEventListener('change', applyCustomization);
       if (darkTextEdgeColorInput) darkTextEdgeColorInput.addEventListener('change', applyCustomization);
       if (includeThemeToggleInput) includeThemeToggleInput.addEventListener('change', applyCustomization);
+
+      // カラースウォッチのリアルタイム更新
+      ['dark-normal-bubble-color', 'dark-right-bubble-color', 'dark-bg-color', 'dark-text-edge-color'].forEach(id => {
+          const el = document.getElementById(id);
+          const sw = document.getElementById(id + '-swatch');
+          if (el && sw) el.addEventListener('input', () => sw.style.setProperty('--swatch-color', el.value.trim() || 'transparent'));
+      });
+      refreshColorSwatches();
 
       switchSettingsTab('settings'); hideLoading(); disableControls(); updateHeadingsNav();
   }
