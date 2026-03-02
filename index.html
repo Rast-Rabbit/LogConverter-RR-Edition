@@ -21,10 +21,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
-    <!-- 【暫定】デザイン確認用ダーク/ライト切り替えボタン（後で削除） -->
-    <div id="temp-theme-toggle-wrap" style="position:fixed;top:10px;right:10px;z-index:9999;">
-        <button onclick="if(typeof window.__rrApplyTheme==='function'){window.__rrApplyTheme(document.body.classList.contains('rr-site-dark')?'light':'dark');this.textContent=document.body.classList.contains('rr-site-dark')?'☀ ライト':'🌙 ダーク';}" style="padding:5px 14px;border-radius:20px;font-size:0.82em;font-weight:bold;cursor:pointer;background:#FF7A5C;color:#1a1030;border:2px solid #d95030;box-shadow:0 2px 8px rgba(0,0,0,0.35);">🌙 ダーク</button>
-    </div>
+ 
     <!-- Headings Navigation Panel -->
     <div id="headings-nav-panel" class="headings-nav-panel">
         <button id="toggle-headings-nav-btn" class="toggle-headings-nav-btn" title="見出し一覧の表示/非表示">見出し</button>
@@ -116,7 +113,7 @@
                     <div><label for="icon-size-slider" class="block text-sm font-medium text-gray-700">アイコンサイズ: <span id="icon-size-value">64</span>px</label><input type="range" id="icon-size-slider" min="24" max="128" value="64" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-1"><label for="bubble-width-slider" class="block text-sm font-medium text-gray-700">吹き出し最大幅: <span id="bubble-width-value">80</span>%</label><input type="range" id="bubble-width-slider" min="30" max="100" value="80" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2"><label for="font-family-select" class="block text-sm font-medium text-gray-700">フォント:</label><select id="font-family-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white focus:border-indigo-500 focus:ring-indigo-500"><option value="font-noto-sans" selected>'Noto Sans JP' (推奨)</option><option value="font-inter">'Inter' (UI標準)</option><option value="font-noto-serif">'Noto Serif JP' (明朝)</option><option value="font-mplus-rounded">'M PLUS Rounded 1c' (丸ゴシック)</option><option value="font-system-sans">システム標準ゴシック</option><option value="font-system-serif">システム標準明朝</option><option value="font-system-mono">システム標準等幅</option></select></div>
-                    <div class="md:col-span-2"><label for="log-height-slider" class="block text-sm font-medium text-gray-700">ログ表示高さ: <span id="log-height-value">384</span>px</label><input type="range" id="log-height-slider" min="200" max="2000" value="384" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
+                    <div class="md:col-span-2"><label for="log-height-slider" class="block text-sm font-medium text-gray-700">ログ表示高さ: <span id="log-height-value">960</span>px</label><input type="range" id="log-height-slider" min="200" max="2000" value="960" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2 grid grid-cols-2 gap-3">
                         <div>
                             <label for="base-text-color" class="block text-sm font-medium text-gray-700">基本文字色（ライト時）:</label>

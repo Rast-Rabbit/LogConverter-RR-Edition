@@ -14,7 +14,7 @@
       darkBgColor: 'rgba(0,0,0,0.30)',             // ダーク：ログ背景（半透明ガラス）
       iconSize: 64,
       bubbleMaxWidth: 80, nameBelowIconMode: false,
-      fontFamily: 'font-noto-sans', logDisplayHeight: 384,
+      fontFamily: 'font-noto-sans', logDisplayHeight: 960,
       skipDeleteConfirm: false,
       baseTextColor: '#333333',           // ライト：基本文字色
       darkBaseTextColor: '#e8e8e8',       // ダーク：基本文字色（Forest Night）
@@ -281,19 +281,6 @@
       try {
           await loadProject(file);
 
-          // After loading a project, make the log display area taller for easier editing.
-          // (The user requested ~2.5x height specifically after project load.)
-          if (customizationSettings && typeof customizationSettings.logDisplayHeight === 'number') {
-              customizationSettings.logDisplayHeight = Math.round(customizationSettings.logDisplayHeight * 2.5);
-              // Update UI slider + actual height (renderLog reads customizationSettings.logDisplayHeight)
-              if (logHeightSlider) logHeightSlider.value = String(customizationSettings.logDisplayHeight);
-              if (logHeightValueSpan) logHeightValueSpan.textContent = String(customizationSettings.logDisplayHeight);
-              // Apply immediately as well (some layouts may not reflow as expected until a direct style set)
-              if (logDisplayDiv) {
-                  logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`;
-                  logDisplayDiv.style.minHeight = `${customizationSettings.logDisplayHeight}px`;
-              }
-          }
           renderLog();
 
           projectLoadInfoSpan.textContent = `プロジェクト読込完了: ${escapeHtml(file.name)}`;
@@ -2189,7 +2176,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           customizationSettings.bubbleMaxWidth = parseInt(bubbleWidthSlider.value, 10) || 80;
           customizationSettings.nameBelowIconMode = nameBelowIconToggle.checked;
           customizationSettings.fontFamily = fontFamilySelect.value;
-          customizationSettings.logDisplayHeight = parseInt(logHeightSlider.value, 10) || 384;
+          customizationSettings.logDisplayHeight = parseInt(logHeightSlider.value, 10) || 960;
           customizationSettings.skipDeleteConfirm = skipDeleteConfirmToggle.checked;
           customizationSettings.baseTextColor = baseTextColorInput.value;
           customizationSettings.textEdgeColor = textEdgeColorInput.value;
@@ -2209,7 +2196,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: 'rgba(200,240,120,0.18)',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false,
-          fontFamily: 'font-noto-sans', logDisplayHeight: 384,
+          fontFamily: 'font-noto-sans', logDisplayHeight: 960,
           skipDeleteConfirm: false,
           baseTextColor: '#333333',         darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff',         darkTextEdgeColor: 'transparent',
@@ -2368,7 +2355,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: 'rgba(200,240,120,0.18)',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false, fontFamily: 'font-noto-sans',
-          logDisplayHeight: 384, skipDeleteConfirm: false,
+          logDisplayHeight: 960, skipDeleteConfirm: false,
           baseTextColor: '#333333', darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff', darkTextEdgeColor: 'transparent',
           backgroundImage: null, backgroundImageFileName: null, backgroundImagePath: null,
