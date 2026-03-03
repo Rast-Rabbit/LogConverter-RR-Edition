@@ -1,0 +1,15 @@
+{
+  "name": "ccfolialogconverterwithimages",
+  "version": "1.0.0",
+  "description": "本プロジェクトは **SIRUBEDON/CCfoliaLogConverterWithImages** を元にしたフォーク（派生版）です。  \r 原版のライセンスは **MIT License** で、本リポジトリも同ライセンスに従います（詳細は `LICENSE` を参照）。",
+  "main": "script.js",
+  "scripts": {
+    "build:css": "tailwindcss -i src/input.css -o tailwind.css --minify"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

@@ -1,6 +1,9 @@
 # Claude Code ローカル設定
 .claude/
 
+# npm
+node_modules/
+
 # デザイン検討用プレビューファイル
 dark-theme-preview.html
 dark_preview.html

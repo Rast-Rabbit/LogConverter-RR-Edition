@@ -1465,8 +1465,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (addChatBtn) advancedActionButtonContainer.appendChild(addChatBtn);
       if (addHeadingBtn) advancedActionButtonContainer.appendChild(addHeadingBtn);
 
-      contentContainer.appendChild(actionButtonContainer);
-      contentContainer.appendChild(advancedActionButtonContainer);
       messageContainer.appendChild(contentContainer);
       container.appendChild(messageContainer);
 
@@ -1481,25 +1479,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       narrationLine.appendChild(narrationSpeaker);
       narrationLine.appendChild(narrationMessage);
       narrationContainer.appendChild(narrationLine);
-
-
-      const narrationActionButtonContainer = document.createElement('div');
-      narrationActionButtonContainer.className = 'narration-action-buttons';
-
-      const moveUpBtnN = createActionButton('上に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, -1));
-      const moveDownBtnN = createActionButton('下に移動', 'action-button-tabmove', () => handleMoveItem(logItem.id, 1));
-      const changeTabBtnN = createActionButton('タブ変更', 'action-button-tabmove', (ev) => {
-          ev.stopPropagation();
-          triggerTabSelectionDropdown(logItem.id, ev.currentTarget);
-      });
-      const narrationDeleteButton = createDeleteButton(logItem.id, 'メッセージ');
-
-      if (moveUpBtnN) narrationActionButtonContainer.appendChild(moveUpBtnN);
-      if (moveDownBtnN) narrationActionButtonContainer.appendChild(moveDownBtnN);
-      if (changeTabBtnN) narrationActionButtonContainer.appendChild(changeTabBtnN);
-      if (narrationDeleteButton) { narrationActionButtonContainer.appendChild(narrationDeleteButton); }
-      narrationContainer.appendChild(narrationActionButtonContainer);
       container.appendChild(narrationContainer);
+      container.appendChild(actionButtonContainer);
+      container.appendChild(advancedActionButtonContainer);
 
       const toggleButton = document.createElement('button'); 
       toggleButton.className = 'display-mode-toggle'; 
