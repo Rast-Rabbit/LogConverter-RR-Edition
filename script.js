@@ -141,6 +141,23 @@
   const RENDER_CHUNK_DELAY = 0;
 
   function escapeHtml(unsafe) { if (typeof unsafe !== 'string') return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+
+  // ZIP・HTML出力時のみ適用するマークダウン変換
+  // エスケープ: \| \** \~~ で変換を抑制
+  function parseMarkdownForExport(text) {
+      if (!text) return text;
+      return text
+          .replace(/\\\|/g,   '\x01PIPE\x01')
+          .replace(/\\\*\*/g, '\x01DSTR\x01')
+          .replace(/\\~~/g,   '\x01DTLD\x01')
+          .replace(/\|([^《\n]+?)《([^》\n]+?)》/g, '<ruby>$1<rt>$2</rt></ruby>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/~~(.+?)~~/g, '<del>$1</del>')
+          .replace(/\x01PIPE\x01/g, '|')
+          .replace(/\x01DSTR\x01/g, '**')
+          .replace(/\x01DTLD\x01/g, '~~');
+  }
+
   function escapeCssSelector(str) { if (!str) return ''; return str.replace(/([!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~])/g, '\\$1'); }
   function showLoading() { if (loadingOverlay) { loadingOverlay.classList.add('visible'); loadingOverlay.setAttribute('aria-hidden', 'false'); } }
   function hideLoading() { if (loadingOverlay) { loadingOverlay.classList.remove('visible'); loadingOverlay.setAttribute('aria-hidden', 'true'); } }
@@ -2676,11 +2693,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       <div class="content-container export">
           <span class="speaker-name-default export" style="${textStyle}">${escapeHtml(speakerName)} <span class="original-tab export">[${escapeHtml(item.tab || 'main')}]</span></span>
           <span class="tab-name-below-icon export">[${escapeHtml(item.tab || 'main')}]</span>
-          <div class="bubble export bubble-left" style="${bubbleBgStyle} ${textStyle}">${item.message}</div>
+          <div class="bubble export bubble-left" style="${bubbleBgStyle} ${textStyle}">${parseMarkdownForExport(item.message)}</div>
       </div>
   </div>
   <div class="narration-container export" style="${textStyle}">
-      <span class="narration-tab">[${escapeHtml(item.tab || 'main')}]</span><span class="narration-speaker">${escapeHtml(speakerName)}:</span> <span class="narration-message">${item.message}</span>
+      <span class="narration-tab">[${escapeHtml(item.tab || 'main')}]</span><span class="narration-speaker">${escapeHtml(speakerName)}:</span> <span class="narration-message">${parseMarkdownForExport(item.message)}</span>
   </div>
 </div>\n`;
               } else if (item.type === 'image') {
