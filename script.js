@@ -46,6 +46,7 @@
    let nextAliasId = 0;
    let expressionAliasMap = {}; // { "アリス": { "笑顔": "emote_0" } }
    let nextExpressionAliasId = 0;
+   let renderLogDebounceTimer = null;
 
 
    // Project file constants
@@ -537,7 +538,7 @@
           const nameAndControlsDiv = document.createElement('div'); nameAndControlsDiv.className = 'flex-grow min-w-0';
           const nameLabel = document.createElement('label'); nameLabel.htmlFor = `name-input-${uniqueSpeakerIdSuffix}`; nameLabel.className = 'block text-sm font-medium text-gray-700 mb-1'; nameLabel.innerHTML = `「${escapeHtml(speaker)}」 <span class="text-xs text-gray-500">(${count}回)</span> 表示名:`;
           const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.id = `name-input-${uniqueSpeakerIdSuffix}`; nameInput.value = setting.displayName; nameInput.className = 'block w-full rounded-md border-gray-300 shadow-sm p-1.5 focus:border-indigo-500 focus:ring-indigo-500 text-sm mb-2'; nameInput.setAttribute('aria-label', `${escapeHtml(speaker)} の表示名`);
-          nameInput.addEventListener('input', (e) => { const newDisplayName = e.target.value; if (characterSettings[speaker]) { characterSettings[speaker].displayName = newDisplayName; updateSpeakerFilterOptionText(speaker, newDisplayName); updateSpeakerDataForExport(); renderLog(); } });
+          nameInput.addEventListener('input', (e) => { const newDisplayName = e.target.value; if (characterSettings[speaker]) { characterSettings[speaker].displayName = newDisplayName; updateSpeakerFilterOptionText(speaker, newDisplayName); updateSpeakerDataForExport(); renderLogDebounced(); } });
 
           const controlsGrid = document.createElement('div');
           controlsGrid.className = 'grid grid-cols-2 gap-x-4 gap-y-2';
@@ -563,7 +564,7 @@
           charColorInput.className = 'p-0.5 h-7 w-10 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
           charColorInput.setAttribute('aria-label', `${escapeHtml(speaker)} のキャラクターテーマカラー (アイコン枠線等)`);
           charColorInput.addEventListener('input', (e) => {
-              if(characterSettings[speaker]) { characterSettings[speaker].color = e.target.value; updateSpeakerDataForExport(); renderLog(); }
+              if(characterSettings[speaker]) { characterSettings[speaker].color = e.target.value; updateSpeakerDataForExport(); renderLogDebounced(); }
           });
           charColorDiv.appendChild(charColorLabel); charColorDiv.appendChild(charColorInput);
 
@@ -577,7 +578,7 @@
               if(characterSettings[speaker]) {
                   characterSettings[speaker].customTextColor = e.target.value;
                   updateSpeakerDataForExport();
-                  renderLog();
+                  renderLogDebounced();
               }
           });
           const resetTextColorButton = document.createElement('button');
@@ -1255,6 +1256,11 @@
                         Object.keys(speakerFrequencies).find(sp => escapeCssSelector(sp) === selectedValue) || 'all';
       if (currentSpeakerFilter === newFilter) return;
       currentSpeakerFilter = newFilter; renderLog();
+  }
+
+  function renderLogDebounced() {
+      clearTimeout(renderLogDebounceTimer);
+      renderLogDebounceTimer = setTimeout(renderLog, 300);
   }
 
   function renderLog() {
