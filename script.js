@@ -13,7 +13,7 @@
       fontSize: 16, backgroundColor: '#f3f4f6',         // ライト：ログ背景
       darkBgColor: 'rgba(0,0,0,0.30)',             // ダーク：ログ背景（半透明ガラス）
       iconSize: 64,
-      bubbleMaxWidth: 80, nameBelowIconMode: false,
+      bubbleMaxWidth: 80,
       fontFamily: 'font-noto-sans', logDisplayHeight: 960,
       skipDeleteConfirm: false,
       baseTextColor: '#333333',           // ライト：基本文字色
@@ -85,7 +85,6 @@
   const iconSizeValueSpan = document.getElementById('icon-size-value');
   const bubbleWidthSlider = document.getElementById('bubble-width-slider');
   const bubbleWidthValueSpan = document.getElementById('bubble-width-value');
-  const nameBelowIconToggle = document.getElementById('name-below-icon-toggle');
   const fontFamilySelect = document.getElementById('font-family-select');
   const resetCustomizationButton = document.getElementById('reset-customization');
   const insertImageInput = document.getElementById('insert-image-input');
@@ -1214,7 +1213,6 @@
        logDisplayDiv.style.fontSize = `${customizationSettings.fontSize}px`; logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`;
        logDisplayDiv.style.setProperty('--bubble-max-width', `${customizationSettings.bubbleMaxWidth}%`);
        logDisplayDiv.style.setProperty('--icon-size', `${customizationSettings.iconSize}px`);
-       logDisplayDiv.classList.toggle('name-below-icon-active', customizationSettings.nameBelowIconMode);
        applyThemeAwareLogStyles();
 
        let filteredItems = displayLogData.filter(item => {
@@ -1279,7 +1277,7 @@
 
            for (let i = currentIndex; i < chunkEnd; i++) {
                const item = dataToSort[i];
-               try {
+               try {
                    let element;
                    if (item.type === 'message') { element = createMessageElement(item); }
                    else if (item.type === 'image') { element = createInsertedImageElement(item); }
@@ -1339,11 +1337,6 @@
       iconImg.onerror = (e) => { const target = e.target; const failedSrc = target.src; if (failedSrc === placeholderSrc) return; let intendedSrc = placeholderSrc; const currentKey = logItem.iconKey || 'default'; if (currentKey === 'override' && logItem.overrideIconSrc) intendedSrc = logItem.overrideIconSrc; else if (currentKey !== 'default' && setting.expressions?.[currentKey]) intendedSrc = setting.expressions[currentKey]; else if (setting.icon) intendedSrc = setting.icon; if (failedSrc === intendedSrc) { if (currentKey === 'override') target.src = setting.icon || placeholderSrc; else if (currentKey !== 'default') target.src = setting.icon || placeholderSrc; else target.src = placeholderSrc; } else { target.src = placeholderSrc; } };
       iconImg.addEventListener('click', (event) => { event.stopPropagation(); triggerIconSelectionDropdown(logItem.id, logItem.speaker, event.currentTarget); });
       iconContainer.appendChild(iconImg);
-      const nameBelowIconSpan = document.createElement('span'); nameBelowIconSpan.className = 'speaker-name-below-icon'; nameBelowIconSpan.textContent = escapeHtml(setting.displayName);
-      nameBelowIconSpan.style.color = messageTextColor;
-      nameBelowIconSpan.title = 'クリックして発言者を変更';
-      nameBelowIconSpan.addEventListener('click', (event) => { event.stopPropagation(); triggerSpeakerSelectionDropdown(logItem.id, event.currentTarget); });
-      iconContainer.appendChild(nameBelowIconSpan);
       messageContainer.appendChild(iconContainer);
 
       const contentContainer = document.createElement('div'); contentContainer.className = 'content-container';
@@ -1351,7 +1344,6 @@
       speakerNameSpan.style.color = messageTextColor;
       speakerNameSpan.title = 'クリックして発言者を変更';
       speakerNameSpan.addEventListener('click', (event) => { event.stopPropagation(); triggerSpeakerSelectionDropdown(logItem.id, event.currentTarget); });
-      const tabBelowIconSpan = document.createElement('span'); tabBelowIconSpan.className = 'tab-name-below-icon'; tabBelowIconSpan.textContent = `[${escapeHtml(logItem.tab || 'main')}]`;
 
       const bubbleDiv = document.createElement('div');
       bubbleDiv.className = 'bubble bubble-left';
@@ -1368,7 +1360,7 @@
       bubbleDiv.style.color = messageTextColor;
 
       bubbleDiv.innerHTML = logItem.message; bubbleDiv.contentEditable = "true"; bubbleDiv.dataset.itemId = logItem.id; bubbleDiv.addEventListener('blur', handleMessageEdit);
-      contentContainer.appendChild(speakerNameSpan); contentContainer.appendChild(tabBelowIconSpan); contentContainer.appendChild(bubbleDiv);
+      contentContainer.appendChild(speakerNameSpan); contentContainer.appendChild(bubbleDiv);
 
       const actionButtonContainer = document.createElement('div'); actionButtonContainer.className = 'action-button-container';
       const advancedActionButtonContainer = document.createElement('div'); advancedActionButtonContainer.className = 'advanced-action-buttons';
@@ -2088,7 +2080,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           customizationSettings.backgroundColor = backgroundColorInput.value;
           customizationSettings.iconSize = parseInt(iconSizeSlider.value, 10) || 64;
           customizationSettings.bubbleMaxWidth = parseInt(bubbleWidthSlider.value, 10) || 80;
-          customizationSettings.nameBelowIconMode = nameBelowIconToggle.checked;
           customizationSettings.fontFamily = fontFamilySelect.value;
           customizationSettings.logDisplayHeight = parseInt(logHeightSlider.value, 10) || 960;
           customizationSettings.skipDeleteConfirm = skipDeleteConfirmToggle.checked;
@@ -2109,7 +2100,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           normalBubbleColor: '#ffffff',     darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
           rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: 'rgba(200,240,120,0.18)',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
-          iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false,
+          iconSize: 64, bubbleMaxWidth: 80,
           fontFamily: 'font-noto-sans', logDisplayHeight: 960,
           skipDeleteConfirm: false,
           baseTextColor: '#333333',         darkBaseTextColor: '#e8e8e8',
@@ -2130,7 +2121,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       try {
           normalColorInput.value = customizationSettings.normalBubbleColor;
           rightBubbleColorInput.value = customizationSettings.rightBubbleColor;
-          fontSizeSlider.value = customizationSettings.fontSize; fontSizeValueSpan.textContent = customizationSettings.fontSize; backgroundColorInput.value = customizationSettings.backgroundColor; iconSizeSlider.value = customizationSettings.iconSize; iconSizeValueSpan.textContent = customizationSettings.iconSize; bubbleWidthSlider.value = customizationSettings.bubbleMaxWidth; bubbleWidthValueSpan.textContent = customizationSettings.bubbleMaxWidth; nameBelowIconToggle.checked = customizationSettings.nameBelowIconMode; fontFamilySelect.value = customizationSettings.fontFamily; logHeightSlider.value = customizationSettings.logDisplayHeight; logHeightValueSpan.textContent = customizationSettings.logDisplayHeight; skipDeleteConfirmToggle.checked = customizationSettings.skipDeleteConfirm;
+          fontSizeSlider.value = customizationSettings.fontSize; fontSizeValueSpan.textContent = customizationSettings.fontSize; backgroundColorInput.value = customizationSettings.backgroundColor; iconSizeSlider.value = customizationSettings.iconSize; iconSizeValueSpan.textContent = customizationSettings.iconSize; bubbleWidthSlider.value = customizationSettings.bubbleMaxWidth; bubbleWidthValueSpan.textContent = customizationSettings.bubbleMaxWidth; fontFamilySelect.value = customizationSettings.fontFamily; logHeightSlider.value = customizationSettings.logDisplayHeight; logHeightValueSpan.textContent = customizationSettings.logDisplayHeight; skipDeleteConfirmToggle.checked = customizationSettings.skipDeleteConfirm;
           baseTextColorInput.value = customizationSettings.baseTextColor;
           textEdgeColorInput.value = customizationSettings.textEdgeColor;
           if (darkNormalColorInput) darkNormalColorInput.value = customizationSettings.darkNormalBubbleColor || 'rgba(255,255,255,0.09)';
@@ -2268,7 +2259,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           normalBubbleColor: '#ffffff', darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
           rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: 'rgba(200,240,120,0.18)',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
-          iconSize: 64, bubbleMaxWidth: 80, nameBelowIconMode: false, fontFamily: 'font-noto-sans',
+          iconSize: 64, bubbleMaxWidth: 80, fontFamily: 'font-noto-sans',
           logDisplayHeight: 960, skipDeleteConfirm: false,
           baseTextColor: '#333333', darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff', darkTextEdgeColor: 'transparent',
@@ -2549,7 +2540,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   }
 
   function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, _embeddedJsContent_unused) {
-      const { iconSize, nameBelowIconMode, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
+      const { iconSize, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
       let logBodyContent = ''; let headingsForNavOutput = [];
 
       const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
@@ -2603,11 +2594,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       <div class="icon-container export" style="width:${iconSize}px; height:${iconSize}px;">
           <img src="${iconRelativePath}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
           <span class="icon-placeholder export" style="display: ${placeholderDisplay}; border-color: ${iconBorderColor}; line-height: ${Math.round(iconSize*0.9)}px; font-size: ${Math.round(iconSize*0.5)}px;">${placeholderChar}</span>
-          <span class="speaker-name-below-icon export" style="${textStyle}">${escapeHtml(speakerName)}</span>
       </div>
       <div class="content-container export">
           <span class="speaker-name-default export" style="${textStyle}">${escapeHtml(speakerName)} <span class="original-tab export">[${escapeHtml(item.tab || 'main')}]</span></span>
-          <span class="tab-name-below-icon export">[${escapeHtml(item.tab || 'main')}]</span>
           <div class="bubble export bubble-left" style="${bubbleBgStyle} ${textStyle}">${parseMarkdownForExport(item.message)}</div>
       </div>
   </div>
@@ -2643,11 +2632,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   <div id="export-all-mode-filter" class="all-mode-filter export hidden"></div>
   <div class="filter-group"> <label for="export-speaker-filter">発言者:</label> <select id="export-speaker-filter" class="speaker-filter export"><option value="all">すべての発言者</option></select> </div>
 </div>`;
-      const headingsNavHtml = headingsForNavOutput.length > 0 ? `<details id="export-headings-nav-container" class="export-headings-nav"><summary id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</summary><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></details>` : "";
-      const safeHtmlTitle = escapeHtml(htmlTitle); const nameBelowIconBodyClass = nameBelowIconMode ? 'name-below-icon-active' : ''; const fontBodyClass = fontFamily || 'font-noto-sans';
+      const headingsNavHtml = headingsForNavOutput.length > 0 ? `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></div>` : "";
+      const safeHtmlTitle = escapeHtml(htmlTitle); const fontBodyClass = fontFamily || 'font-noto-sans';
       const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings);
 
-      const bodyClasses = [nameBelowIconBodyClass, fontBodyClass, 'export-body', 'rr-site-light'];
+      const bodyClasses = [fontBodyClass, 'export-body', 'rr-site-light'];
       if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
           bodyClasses.push('has-background-image');
       }
@@ -2687,6 +2676,7 @@ let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsI
 let lazyRevealObserver = null;
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
 const exportThemeColors = ${exportThemeColorsString};
+const headingsForExport = ${headingsDataString};
 let currentExportTheme = 'light';
 // toggleExportTheme は function 宣言のためホイストされる。early return より前に window へ公開
 window.toggleExportTheme = function() {
@@ -2709,7 +2699,7 @@ function applyInitialStyles() {
         const speakerSetting = speakerSettings[speakerId];
         if (item.classList.contains('message-item')) {
             const textColor = getSpeakerTextColor(speakerId);
-            const nameElements = item.querySelectorAll('.speaker-name-default, .speaker-name-below-icon');
+            const nameElements = item.querySelectorAll('.speaker-name-default');
             nameElements.forEach(el => el.style.color = textColor);
             const bubbleElement = item.querySelector('.bubble.export');
             if (bubbleElement) bubbleElement.style.color = textColor;
@@ -2742,7 +2732,7 @@ function applyExportTheme(theme) {
       const sp = item.dataset.speaker;
       const custom = (speakerSettings[sp] && speakerSettings[sp].customTextColor) ? speakerSettings[sp].customTextColor : null;
       const tc = custom || (isDark ? c.darkText : c.lightText);
-      item.querySelectorAll('.speaker-name-default,.speaker-name-below-icon,.bubble.export,.narration-container.export')
+      item.querySelectorAll('.speaker-name-default,.bubble.export,.narration-container.export')
         .forEach(function(el) { el.style.color = tc; });
     });
   }
@@ -2915,8 +2905,12 @@ function lazyRevealMore() {
 function initializeExportHeadingsNav() {
     const navContainer = document.getElementById('export-headings-nav-container');
     const listUl = document.getElementById('export-headings-list');
-    if (!navContainer || !listUl) return;
+    const toggleBtn = document.getElementById('export-toggle-headings-nav');
+    const bodyEl = document.querySelector('body.export-body');
+    if (!navContainer || !listUl || !toggleBtn || !bodyEl) return;
     if (headingsForExport.length === 0) { listUl.innerHTML = '<li>見出しなし</li>'; navContainer.style.display = 'none'; return; }
+
+    let isNavOpen = false;
     headingsForExport.forEach(h => {
         const li = document.createElement('li'); li.className = 'level-' + h.level;
         const a = document.createElement('a'); a.href = '#' + h.id; a.textContent = h.text;
@@ -2943,14 +2937,37 @@ function initializeExportHeadingsNav() {
             } else {
                 targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
             }
-            if (window.innerWidth <= 768 && typeof navContainer.open !== 'undefined') {
-                navContainer.open = false;
-            }
+            if (window.innerWidth <= 768 && isNavOpen) toggleBtn.click();
         };
         li.appendChild(a); listUl.appendChild(li);
     });
-}
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }); }
+
+    toggleBtn.onclick = () => {
+        isNavOpen = !isNavOpen;
+        if (isNavOpen) {
+            navContainer.classList.add('open');
+            if (bodyEl && document.body.contains(navContainer) && getComputedStyle(navContainer).display !== 'none') {
+                 bodyEl.style.marginLeft = navContainer.offsetWidth + 'px';
+            } else if (bodyEl) {
+                 bodyEl.style.marginLeft = '220px';
+            }
+            toggleBtn.textContent = '閉';
+        } else {
+            navContainer.classList.remove('open');
+            if (bodyEl) bodyEl.style.marginLeft = '0';
+            toggleBtn.textContent = '見';
+        }
+    };
+    if (headingsForExport.length > 0 && window.innerWidth > 768) {
+        isNavOpen = false;
+        toggleBtn.click();
+    } else {
+        isNavOpen = false; navContainer.classList.remove('open');
+        navContainer.style.left = '';
+        if (bodyEl) bodyEl.style.marginLeft = '0';
+        toggleBtn.textContent = '見';
+    }
+}if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }); }
 else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }
 })();`;
    }
@@ -2968,7 +2985,7 @@ else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadings
   }
 
   function generateOutputCss(currentCustomization, options = {}) {
-      const { iconSize, bubbleMaxWidth, normalBubbleColor, backgroundColor, fontSize, nameBelowIconMode, fontFamily, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImage, backgroundImageFileName } = currentCustomization;
+      const { iconSize, bubbleMaxWidth, normalBubbleColor, backgroundColor, fontSize, fontFamily, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImage, backgroundImageFileName } = currentCustomization;
       const placeholderLineHeight = Math.round(iconSize * 0.9); const placeholderFontSize = Math.round(iconSize * 0.5);
       const responsiveIconSize = Math.max(24, Math.round(iconSize * 0.75)); const responsivePlaceholderLineHeight = Math.round(responsiveIconSize * 0.9); const responsivePlaceholderFontSize = Math.round(responsiveIconSize * 0.5);
       const fontFamilies = { 'font-inter': "'Inter', sans-serif", 'font-noto-sans': "'Noto Sans JP', sans-serif", 'font-noto-serif': "'Noto Serif JP', serif", 'font-mplus-rounded': "'M PLUS Rounded 1c', sans-serif", 'font-system-sans': "sans-serif", 'font-system-serif': "serif", 'font-system-mono': "monospace" };
@@ -3123,19 +3140,11 @@ color: var(--base-text-color);
     line-height: ${placeholderLineHeight}px; font-size: ${placeholderFontSize}px;
 }
 .content-container.export { flex-grow: 1; min-width: 0; }
-.speaker-name-default.export, .narration-speaker, .speaker-name-below-icon.export {
+.speaker-name-default.export, .narration-speaker {
     text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
 }
 .speaker-name-default.export { display: block; font-weight: bold; margin-bottom: 4px; font-size: 0.9em; }
 .original-tab.export { font-weight: normal; font-size: 0.88em; color: #555; margin-left: 6px; text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color); }
-.tab-name-below-icon.export { display: none; font-size: 0.8em; color: #666; margin-bottom: 2px; text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color); }
-.speaker-name-below-icon.export {
-    display: none; font-size: 0.85em; font-weight: bold;
-    text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color), -1.5px -1.5px 0 var(--text-edge-color), 1.5px -1.5px 0 var(--text-edge-color), -1.5px 1.5px 0 var(--text-edge-color), 1.5px 1.5px 0 var(--text-edge-color);
-    position: absolute; bottom: -1.5em; left: 50%; transform: translateX(-50%);
-    width: max-content; max-width: calc(var(--icon-size) + 20px);
-    line-height: 1.1; text-align: center; pointer-events: none;
-}
 .bubble.export {
     position: relative; padding: 10px 15px; border-radius: 16px;
     word-wrap: break-word; word-break: break-word;
@@ -3155,13 +3164,6 @@ color: var(--base-text-color);
 .narration-tab { font-size: 0.8em; color: #666; margin-right: 0.5em; text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color); }
 .narration-speaker { font-weight: bold; margin-right: 0.25em; }
 .narration-message { display: inline; }
-body.name-below-icon-active .icon-container.export { margin-bottom: 1.8em; overflow: visible; }
-body.name-below-icon-active .speaker-name-default.export { display: none; }
-body.name-below-icon-active .tab-name-below-icon.export { display: block; }
-body.name-below-icon-active .speaker-name-below-icon.export { display: block; }
-body.name-below-icon-active .bubble.export.bubble-left { margin-left: 0; }
-body.name-below-icon-active .bubble.export.bubble-left::before { left: -8px; }
-body.name-below-icon-active .message-container.export.align-right .bubble.export.bubble-left { margin-right: 0; }
 .inserted-image-container.export { text-align: center; }
 .inserted-image.export { max-width: 85%; max-height: 550px; border-radius: 6px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15); display: block; margin: 0 auto; }
 .image-caption.export { font-size: 0.9em; color: #444; margin-top: 6px; padding: 0 5%; line-height: 1.4; text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color); }
@@ -3177,12 +3179,11 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: 0; top: 10px; z-index: 1000; font-size: 0.9em; overflow: visible; }
-.export-headings-nav summary#export-toggle-headings-nav { list-style: none; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; box-shadow: 2px 0 5px rgba(0,0,0,0.1); transition: background-color 0.2s; }
-.export-headings-nav summary#export-toggle-headings-nav::-webkit-details-marker { display: none; }
-.export-headings-nav summary#export-toggle-headings-nav:hover { background: #2980b9; }
-.export-headings-nav .nav-content { display: none; position: absolute; left: 100%; top: 0; width: 200px; max-height: calc(100vh - 40px); overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 5px 5px 0; padding: 10px; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
-.export-headings-nav[open] .nav-content { display: block; }
+.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
+.export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
+.export-headings-nav .nav-content { padding: 5px; max-height: calc(100vh - 40px); overflow-y: auto; }
 .export-headings-nav h5 { margin-top: 0; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
 .export-headings-nav ul { list-style: none; padding: 0; margin: 0; }
 .export-headings-nav li a { text-decoration: none; color: #337ab7; display: block; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; }
@@ -3208,14 +3209,12 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
     .message-container.export.align-right .bubble.export.bubble-left::before { top: 8px; right: -7px; left:auto; border-width: 7px 0 7px 9px;}
     .speaker-name-default.export { font-size: 0.92em; }
     .original-tab.export { font-size: 0.82em; }
-    .tab-name-below-icon.export { font-size: 0.75em; }
-    .speaker-name-below-icon.export { font-size: 0.8em; max-width: calc(${responsiveIconSize}px + 15px); bottom: -1.3em; }
-    body.name-below-icon-active .icon-container.export { margin-bottom: 1.5em; }
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-headings-nav .nav-content { width: 180px; }
-    .export-headings-nav summary#export-toggle-headings-nav { padding: 8px 4px;}
+    .export-headings-nav { width: 180px; left: -190px; }
+    .export-headings-nav.open { left: 0px !important; }
+    .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
 }
 /* ── rr-site-dark / rr-site-light (export) ── */
 html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
@@ -3268,11 +3267,11 @@ body.rr-site-dark .heading-item.export.level-3 { color: rgba(136,128,232,0.88) !
 body.rr-site-dark .heading-item.export.level-4 { color: rgba(136,128,232,0.80) !important; }
 body.rr-site-dark .heading-item.export.level-5 { color: rgba(136,128,232,0.60) !important; }
 body.rr-site-dark .heading-item.export.level-6 { color: rgba(136,128,232,0.44) !important; }
-body.rr-site-dark .export-headings-nav .nav-content { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
 body.rr-site-dark .export-headings-nav h5 { color: #e8e8e8 !important; border-bottom-color: rgba(255,255,255,0.14) !important; }
 body.rr-site-dark .export-headings-nav li a { color: #b0aeee !important; }
 body.rr-site-dark .export-headings-nav li a:hover { color: #cccaf8 !important; background: rgba(255,255,255,0.08) !important; }
-body.rr-site-dark .export-headings-nav summary#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
+body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
 body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
 `;
    }
@@ -3337,7 +3336,6 @@ body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) 
           logDisplayDiv.style.height = `${customizationSettings.logDisplayHeight}px`;
       });
 
-      nameBelowIconToggle.addEventListener('change', applyCustomization);
       fontFamilySelect.addEventListener('change', applyCustomization);
       normalColorInput.addEventListener('change', applyCustomization);
       rightBubbleColorInput.addEventListener('change', applyCustomization);

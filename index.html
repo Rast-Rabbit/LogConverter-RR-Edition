@@ -138,7 +138,6 @@
                         <img id="background-image-preview" src="" alt="背景画像プレビュー" class="mt-2">
                         <p class="text-xs text-gray-500 mt-1">出力ZIPにのみ適用されます。ぼかしと明度補正がかかります。</p>
                     </div>
-                    <div class="md:col-span-2 flex items-center space-x-2"><label for="name-below-icon-toggle" class="text-sm font-medium text-gray-700">名前をアイコン下に表示:</label><label class="switch"><input type="checkbox" id="name-below-icon-toggle"><span class="slider"></span></label></div>
                     <div class="md:col-span-2 flex items-center space-x-2">
                         <label for="skip-delete-confirm-toggle" class="text-sm font-medium text-gray-700">削除確認を省略:</label>
                         <label class="switch">
@@ -211,6 +210,7 @@
         <footer class="app-footer">
      <h4>更新履歴</h4>
             <ul>
+                <li>2026/03/10: 「名前をアイコン下に表示」機能と関連DOMを削除。表示構造を今後軽くしやすい形に整理</li>
                 <li>2026/03/10: ローカルストレージ保存機能絶対要らないので削除。（ファイルが重いとバグって動作もしなかった）</li>
                 <li>2026/03/09: ZIP・HTML出力のダークモード未対応箇所を修正（フィルタ/タブ/見出し/右吹き出し）、見出しナビのジャンプ位置ずれを修正</li>
                 <li>2026/03/07: ZIP・HTML出力に無限スクロールを追加。大量ログの初期読み込みを80件に絞り、スクロールで逐次表示することで表示速度と負荷を改善</li>

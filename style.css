@@ -128,8 +128,6 @@ body {
 
 .bubble-left {
     margin-right: auto;
-    /* Default margin-left is handled by flexbox spacing in .message-container if not name-below-icon */
-    /* margin-left: calc(var(--icon-size, 64px) + 12px); */
 }
 
 .bubble-left::before {
@@ -197,19 +195,6 @@ body {
 /* And CSS for .bubble-right::before should take precedence if .bubble-right class is also on the bubble */
 
 
-/* For name-below-icon-active with right alignment */
-.name-below-icon-active .message-container.align-right .bubble-left {
-    margin-left: auto;
-    margin-right: 0;
-}
-
-/* Arrow handled by .bubble-right::before when .bubble-right class is present */
-.name-below-icon-active .message-container.align-right .action-button-container {
-    margin-right: 0;
-    justify-content: flex-end;
-}
-
-
 .icon-container {
     flex-shrink: 0;
     position: relative;
@@ -230,31 +215,6 @@ body {
     margin-bottom: 2px;
     /* color applied by JS */
     text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
-}
-
-.tab-name-below-icon {
-    display: none;
-    font-size: 0.8em;
-    color: #666;
-    margin-bottom: 2px;
-    text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
-}
-
-.speaker-name-below-icon {
-    display: none;
-    font-size: 0.85em;
-    font-weight: bold;
-    text-align: center;
-    text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color), -1.5px -1.5px 0 var(--text-edge-color), 1.5px -1.5px 0 var(--text-edge-color), -1.5px 1.5px 0 var(--text-edge-color), 1.5px 1.5px 0 var(--text-edge-color);
-    position: absolute;
-    bottom: -1.5em;
-    left: 50%;
-    transform: translateX(-50%);
-    width: max-content;
-    max-width: calc(var(--icon-size, 64px) + 20px);
-    line-height: 1.1;
-    pointer-events: none;
-    /* color applied by JS */
 }
 
 /* Narration Mode Styles */
@@ -308,36 +268,6 @@ body {
 
 .message-item[data-display-mode="bubble"] .narration-container {
     display: none;
-}
-
-/* Name Below Icon Mode Styles */
-.name-below-icon-active .icon-container {
-    margin-bottom: 1.8em;
-    overflow: visible;
-}
-
-.name-below-icon-active .speaker-name-default {
-    display: none;
-}
-
-.name-below-icon-active .tab-name-below-icon {
-    display: block;
-}
-
-.name-below-icon-active .speaker-name-below-icon {
-    display: block;
-}
-
-.name-below-icon-active .bubble-left {
-    margin-left: 0;
-}
-
-.name-below-icon-active .bubble-left::before {
-    left: -8px;
-}
-
-.name-below-icon-active .action-button-container {
-    margin-left: 0;
 }
 
 /* Display Mode Toggle Button */
@@ -822,7 +752,7 @@ body.headings-nav-open {
     line-height: 1.4;
     text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
 }
-
+
 
 #loading-overlay {
     position: fixed;
@@ -1180,6 +1110,8 @@ input:checked+.slider:before {
   /* タブアクティブ: インジゴ */
   body.rr-site-dark .border-indigo-500 { border-color: #8880E8 !important; }
   body.rr-site-dark .text-indigo-600   { color: #8880E8 !important; }
+  body.rr-site-dark .text-blue-800     { color: #b0aeee !important; }
+  body.rr-site-dark .text-blue-600     { color: #9f98ef !important; }
   /* フォーム */
   body.rr-site-dark input,
   body.rr-site-dark textarea,
