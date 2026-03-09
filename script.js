@@ -2815,6 +2815,8 @@ function applyExportTheme(theme) {
     exportLogDisplay.style.backgroundColor = isDark ? c.darkBg : c.lightBg;
     exportLogDisplay.style.color = isDark ? c.darkText : c.lightText;
     document.documentElement.style.setProperty('--text-edge-color', isDark ? c.darkEdge : c.lightEdge);
+    document.documentElement.style.setProperty('--bubble-right-bg-color', isDark ? c.darkRight : c.lightRight);
+    document.documentElement.style.setProperty('--bubble-right-arrow-color', isDark ? c.darkRight : c.lightRight);
     exportLogDisplay.querySelectorAll('.bubble.export').forEach(function(b) {
       const isRight = b.classList.contains('bubble-right');
       const col = isDark ? (isRight ? c.darkRight : c.darkNormal) : (isRight ? c.lightRight : c.lightNormal);
@@ -3015,8 +3017,10 @@ function initializeExportHeadingsNav() {
                     if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
                     el.classList.remove('lazy-hidden');
                 });
+                setTimeout(function() { targetEl.scrollIntoView({behavior:'smooth', block: 'start'}); }, 100);
+            } else {
+                targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
             }
-            targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
         };
         li.appendChild(a); listUl.appendChild(li);
     });
@@ -3042,7 +3046,7 @@ function initializeExportHeadingsNav() {
         toggleBtn.click();
     } else {
         isNavOpen = false; navContainer.classList.remove('open');
-        navContainer.style.left = '-210px';
+        navContainer.style.left = '';
         if (bodyEl) bodyEl.style.marginLeft = '0';
         toggleBtn.textContent = '見';
     }
@@ -3349,6 +3353,26 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
 .export-theme-toggle-wrap button { padding: 5px 14px; border-radius: 20px; cursor: pointer; font-size: 0.82em; font-weight: bold; transition: background-color 0.3s ease, color 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
 body.rr-site-light .export-theme-toggle-wrap button { background-color: #c94030; color: #fff; border: 2px solid #a03020; }
 body.rr-site-dark .export-theme-toggle-wrap button { background-color: #FF7A5C; color: #1a1030; border: 2px solid #d95030; }
+/* ── ダーク：フィルタ / タブ / 見出しナビ ── */
+body.rr-site-dark .filter-controls.export { background-color: rgba(0,0,0,0.42) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .filter-group label { color: rgba(232,232,232,0.80); }
+body.rr-site-dark .speaker-filter.export { background-color: rgba(0,0,0,0.40) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+body.rr-site-dark .tab-button.export { background-color: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+body.rr-site-dark .tab-button.export:hover { background-color: rgba(255,255,255,0.15) !important; }
+body.rr-site-dark h1 { color: #FF7A5C !important; }
+body.rr-site-dark .heading-item.export { color: #e8e8e8 !important; }
+body.rr-site-dark .heading-item.export.level-1 { color: #FF7A5C !important; border-bottom-color: #FF7A5C !important; }
+body.rr-site-dark .heading-item.export.level-2 { color: #8880E8 !important; border-bottom-color: rgba(136,128,232,0.45) !important; }
+body.rr-site-dark .heading-item.export.level-3 { color: rgba(136,128,232,0.88) !important; }
+body.rr-site-dark .heading-item.export.level-4 { color: rgba(136,128,232,0.80) !important; }
+body.rr-site-dark .heading-item.export.level-5 { color: rgba(136,128,232,0.60) !important; }
+body.rr-site-dark .heading-item.export.level-6 { color: rgba(136,128,232,0.44) !important; }
+body.rr-site-dark .export-headings-nav { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav h5 { color: #e8e8e8 !important; border-bottom-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav li a { color: #b0aeee !important; }
+body.rr-site-dark .export-headings-nav li a:hover { color: #cccaf8 !important; background: rgba(255,255,255,0.08) !important; }
+body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
+body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
 `;
    }
 
