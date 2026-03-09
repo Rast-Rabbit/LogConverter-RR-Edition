@@ -2977,12 +2977,20 @@ function applyLazyReveal() {
     exportLogDisplay.querySelectorAll('.lazy-hidden').forEach(function(el) { el.classList.remove('lazy-hidden'); });
     var visibleItems = Array.from(exportLogDisplay.querySelectorAll('.log-item'))
         .filter(function(el) { return !el.classList.contains('hidden-log-item'); });
-    visibleItems.slice(80).forEach(function(el) { el.classList.add('lazy-hidden'); });
+    visibleItems.slice(80).forEach(function(el) {
+        el.classList.add('lazy-hidden');
+        var prev = el.previousElementSibling;
+        if (prev && prev.classList.contains('tab-separator')) prev.classList.add('lazy-hidden');
+    });
 }
 
 function lazyRevealMore() {
-    var hiddenItems = Array.from(exportLogDisplay.querySelectorAll('.lazy-hidden'));
-    hiddenItems.slice(0, 80).forEach(function(el) { el.classList.remove('lazy-hidden'); });
+    var hiddenItems = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
+    hiddenItems.slice(0, 80).forEach(function(el) {
+        var prev = el.previousElementSibling;
+        if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
+        el.classList.remove('lazy-hidden');
+    });
 }
 ;
 function initializeExportHeadingsNav() {
