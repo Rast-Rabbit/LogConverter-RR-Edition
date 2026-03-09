@@ -72,8 +72,6 @@
   const exportHtmlButton = document.getElementById('export-html-button');
   const saveProjectButton = document.getElementById('save-project-button');
   const loadingOverlay = document.getElementById('loading-overlay');
-  const saveSettingsButton = document.getElementById('save-settings-button');
-  const loadSettingsButton = document.getElementById('load-settings-button');
   const settingsTabButton = document.getElementById('tab-btn-settings');
   const customizeTabButton = document.getElementById('tab-btn-customize');
   const settingsPanel = document.getElementById('settings-panel-settings');
@@ -126,11 +124,7 @@
   const newCharIconModalInput = document.getElementById('new-char-icon-modal-input');
 
   const PLACEHOLDER_ICON_URL = 'https://placehold.co/64x64/e0e0e0/757575?text=?';
-  const LOCALSTORAGE_SETTINGS_KEY = 'logToolSettings_v11.0';
   const LOCALSTORAGE_CUSTOMIZATION_KEY = 'logToolCustomization_v10.5';
-  const BROWSER_SETTINGS_DB_NAME = 'ccfoliaLogToolBrowserStorage';
-  const BROWSER_SETTINGS_STORE_NAME = 'settings';
-  const CHARACTER_SETTINGS_STORAGE_RECORD = 'characterSettings';
   const FONT_CLASSES = [
        'font-inter', 'font-noto-sans', 'font-noto-serif',
        'font-mplus-rounded', 'font-system-sans', 'font-system-serif',
@@ -184,133 +178,6 @@
        return sanitized.replace(/_+/g, '_');
   }
 
-  function isDataUrl(value) {
-      return typeof value === 'string' && value.startsWith('data:');
-  }
-
-  function dataUrlToBlob(dataUrl) {
-      if (!isDataUrl(dataUrl)) return null;
-      const matches = dataUrl.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/);
-      if (!matches) return null;
-      const mimeType = matches[1] || 'application/octet-stream';
-      const isBase64 = !!matches[2];
-      const dataPart = matches[3] || '';
-      const byteString = isBase64 ? atob(dataPart) : decodeURIComponent(dataPart);
-      const byteNumbers = new Uint8Array(byteString.length);
-      for (let i = 0; i < byteString.length; i++) {
-          byteNumbers[i] = byteString.charCodeAt(i);
-      }
-      return new Blob([byteNumbers], { type: mimeType });
-  }
-
-  function getExtensionForMimeType(mimeType) {
-      const mimeMap = {
-          'image/jpeg': 'jpg',
-          'image/png': 'png',
-          'image/gif': 'gif',
-          'image/webp': 'webp',
-          'image/svg+xml': 'svg',
-          'image/bmp': 'bmp'
-      };
-      return mimeMap[mimeType] || 'bin';
-  }
-
-  function buildFileFromDataUrl(dataUrl, filenameStem) {
-      const blob = dataUrlToBlob(dataUrl);
-      if (!blob) return null;
-      const safeStem = sanitizeForFilename(filenameStem || 'asset') || 'asset';
-      const ext = getExtensionForMimeType(blob.type);
-      return createFileFromBlob(blob, `${safeStem}.${ext}`);
-  }
-
-  function openBrowserSettingsDb() {
-      return new Promise((resolve, reject) => {
-          if (!('indexedDB' in window)) {
-              resolve(null);
-              return;
-          }
-          const request = indexedDB.open(BROWSER_SETTINGS_DB_NAME, 1);
-          request.onupgradeneeded = () => {
-              const db = request.result;
-              if (!db.objectStoreNames.contains(BROWSER_SETTINGS_STORE_NAME)) {
-                  db.createObjectStore(BROWSER_SETTINGS_STORE_NAME);
-              }
-          };
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error || new Error('IndexedDB open failed.'));
-      });
-  }
-
-  async function writeCharacterSettingsToBrowserStorage(settingsToSave) {
-      try {
-          const db = await openBrowserSettingsDb();
-          if (db) {
-              await new Promise((resolve, reject) => {
-                  const tx = db.transaction(BROWSER_SETTINGS_STORE_NAME, 'readwrite');
-                  tx.objectStore(BROWSER_SETTINGS_STORE_NAME).put({
-                      value: settingsToSave,
-                      savedAt: new Date().toISOString()
-                  }, CHARACTER_SETTINGS_STORAGE_RECORD);
-                  tx.oncomplete = () => resolve();
-                  tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed.'));
-                  tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted.'));
-              });
-              try {
-                  localStorage.removeItem(LOCALSTORAGE_SETTINGS_KEY);
-                  localStorage.setItem(LOCALSTORAGE_SETTINGS_KEY, JSON.stringify({ storage: 'indexeddb' }));
-              } catch (_) {}
-              return 'indexeddb';
-          }
-      } catch (error) {
-          console.warn('Falling back to LocalStorage for character settings:', error);
-      }
-
-      localStorage.setItem(LOCALSTORAGE_SETTINGS_KEY, JSON.stringify(settingsToSave));
-      return 'localStorage';
-  }
-
-  async function readCharacterSettingsFromBrowserStorage() {
-      try {
-          const db = await openBrowserSettingsDb();
-          if (db) {
-              const stored = await new Promise((resolve, reject) => {
-                  const tx = db.transaction(BROWSER_SETTINGS_STORE_NAME, 'readonly');
-                  const request = tx.objectStore(BROWSER_SETTINGS_STORE_NAME).get(CHARACTER_SETTINGS_STORAGE_RECORD);
-                  request.onsuccess = () => resolve(request.result?.value || null);
-                  request.onerror = () => reject(request.error || new Error('IndexedDB read failed.'));
-              });
-              if (stored) return stored;
-          }
-      } catch (error) {
-          console.warn('Failed to read character settings from IndexedDB:', error);
-      }
-
-      const savedSettingsJson = localStorage.getItem(LOCALSTORAGE_SETTINGS_KEY);
-      if (!savedSettingsJson) return null;
-      const parsed = JSON.parse(savedSettingsJson);
-      if (parsed && parsed.storage === 'indexeddb') return null;
-      return parsed;
-  }
-
-  function ensureCharacterAssetsAreBackedByFiles() {
-      Object.entries(characterSettings).forEach(([speaker, setting]) => {
-          if (!setting) return;
-
-          const defaultIconKey = setting.isNew ? `newchar_${speaker}` : speaker;
-          if (isDataUrl(setting.icon) && !(uploadedFiles[defaultIconKey] instanceof Blob)) {
-              const iconFile = buildFileFromDataUrl(setting.icon, `${defaultIconKey}_icon`);
-              if (iconFile) uploadedFiles[defaultIconKey] = iconFile;
-          }
-
-          Object.entries(setting.expressions || {}).forEach(([expName, dataUrl]) => {
-              const expKey = `exp_${speaker}_${expName}`;
-              if (isDataUrl(dataUrl) && !(uploadedFiles[expKey] instanceof Blob)) {
-                  const expFile = buildFileFromDataUrl(dataUrl, `${speaker}_${expName}`);
-                  if (expFile) uploadedFiles[expKey] = expFile;
-              }
-          });
-      });
-  }
   function getImagePathForKey(key, fileObject) {
       if (!fileObject || !(fileObject instanceof Blob)) { console.warn(`getImagePathForKey: Invalid fileObject for key ${key}`); return null; }
       let outputFilename = null;
@@ -516,12 +383,12 @@
   }
 
   function enableControls() {
-       exportButton.disabled = false; if (exportHtmlButton) exportHtmlButton.disabled = false; saveProjectButton.disabled = false; saveSettingsButton.disabled = false; loadSettingsButton.disabled = false;
+       exportButton.disabled = false; if (exportHtmlButton) exportHtmlButton.disabled = false; saveProjectButton.disabled = false;
        speakerFilterSelect.disabled = Object.keys(speakerFrequencies).length === 0 && Object.keys(characterSettings).filter(s => !speakerFrequencies[s]).length === 0;
        exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; addHeaderImageButton.disabled = false; addNewCharacterButton.disabled = false;
   }
   function disableControls() {
-      exportButton.disabled = true; if (exportHtmlButton) exportHtmlButton.disabled = true; saveProjectButton.disabled = true; saveSettingsButton.disabled = true; loadSettingsButton.disabled = true;
+      exportButton.disabled = true; if (exportHtmlButton) exportHtmlButton.disabled = true; saveProjectButton.disabled = true;
       speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; addHeaderImageButton.disabled = true; addNewCharacterButton.disabled = true;
   }
 
@@ -886,81 +753,6 @@
                }
            }
        });
-  }
-
-  async function saveCharacterSettings() {
-      if (Object.keys(characterSettings).length === 0) { alert('保存する設定がありません。'); return; }
-      try {
-           const settingsToSave = {};
-           for (const [speaker, setting] of Object.entries(characterSettings)) {
-               settingsToSave[speaker] = {
-                   displayName: setting.displayName,
-                   icon: setting.icon,
-                   expressions: setting.expressions,
-                   alignment: setting.alignment || 'left',
-                   color: setting.color || '#000000',
-                   customTextColor: setting.customTextColor,
-                   forceNarration: !!setting.forceNarration,
-                   isNew: !!setting.isNew
-                };
-           }
-           const storageMode = await writeCharacterSettingsToBrowserStorage(settingsToSave);
-           const storageLabel = storageMode === 'indexeddb' ? 'ブラウザ領域' : 'LocalStorage';
-           alert(`キャラクター設定を${storageLabel}に一時保存しました。`);
-      }
-      catch (error) { console.error('Error saving char settings to browser storage:', error); alert(`ブラウザへの設定保存エラー: ${error.message}`); }
-  }
-
-   async function loadCharacterSettings() {
-      if (Object.keys(characterSettings).length === 0 && Object.keys(speakerFrequencies).length === 0) { alert('設定を適用するキャラクターがいません。ログを読み込むか新規キャラを追加してください。'); return; }
-      try {
-          const loadedSettings = await readCharacterSettingsFromBrowserStorage();
-          if (!loadedSettings) { alert('ブラウザに保存された設定が見つかりません。'); return; }
-          let settingsAppliedCount = 0;
-           Object.keys(speakerFrequencies).forEach(speaker => {
-              if (loadedSettings[speaker]) {
-                  if (!characterSettings[speaker]) characterSettings[speaker] = { displayName: speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false, isNew: false };
-                  characterSettings[speaker].displayName = loadedSettings[speaker].displayName;
-                  characterSettings[speaker].icon = loadedSettings[speaker].icon || null;
-                  characterSettings[speaker].expressions = loadedSettings[speaker].expressions || {};
-                  characterSettings[speaker].alignment = loadedSettings[speaker].alignment || 'left';
-                  characterSettings[speaker].color = loadedSettings[speaker].color || '#000000';
-                  characterSettings[speaker].customTextColor = loadedSettings[speaker].customTextColor || null;
-                  characterSettings[speaker].forceNarration = loadedSettings[speaker].forceNarration || false;
-                  characterSettings[speaker].isNew = false;
-                  settingsAppliedCount++;
-              }
-          });
-          Object.keys(loadedSettings).forEach(speaker => {
-              if (!speakerFrequencies[speaker]) {
-                  characterSettings[speaker] = {
-                      displayName: loadedSettings[speaker].displayName,
-                      icon: loadedSettings[speaker].icon || null,
-                      expressions: loadedSettings[speaker].expressions || {},
-                      alignment: loadedSettings[speaker].alignment || 'left',
-                      color: loadedSettings[speaker].color || '#000000',
-                      customTextColor: loadedSettings[speaker].customTextColor || null,
-                      forceNarration: loadedSettings[speaker].forceNarration || false,
-                      isNew: true
-                  };
-                  settingsAppliedCount++;
-              } else {
-                  if (loadedSettings[speaker].color && characterSettings[speaker]) {
-                       characterSettings[speaker].color = loadedSettings[speaker].color;
-                  }
-                  if (typeof loadedSettings[speaker].customTextColor !== 'undefined' && characterSettings[speaker]) {
-                       characterSettings[speaker].customTextColor = loadedSettings[speaker].customTextColor;
-                  }
-                   if (typeof loadedSettings[speaker].forceNarration !== 'undefined' && characterSettings[speaker]) {
-                       characterSettings[speaker].forceNarration = loadedSettings[speaker].forceNarration;
-                  }
-              }
-          });
-
-          ensureCharacterAssetsAreBackedByFiles();
-          if (settingsAppliedCount > 0) { updateSpeakerDataForExport(); populateCharacterSettingsUI(); populateSpeakerFilterUI(); renderLog(); alert(`${settingsAppliedCount}件のキャラ設定をブラウザから読み込み/更新しました。`); }
-           else alert('ブラウザに一致/適用可能な保存設定がありませんでした。');
-      } catch (error) { console.error('Error loading char settings from browser storage:', error); alert(`ブラウザからの設定読込エラー: ${error.message}`); }
   }
 
   function openAddNewCharacterModal() {
@@ -2382,7 +2174,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const projectName = exportHtmlTitleInput.value.trim() || logFileNameBase || 'log_project'; const zipFilenameBase = exportZipFilenameInput.value.trim() || logFileNameBase || 'log_project'; const projectFilename = `${zipFilenameBase}${PROJECT_FILE_EXTENSION}`;
       showLoading();
       try {
-          ensureCharacterAssetsAreBackedByFiles();
           const zip = new JSZip(); const imgFolder = zip.folder(PROJECT_IMAGES_FOLDER.replace('/', ''));
           if (!imgFolder) throw new Error("Failed to create 'images' folder in ZIP.");
 
@@ -2616,7 +2407,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (itemsToExport.length === 0) { alert('エクスポートするデータがありません。'); return; } if (typeof JSZip === 'undefined') { alert('ZIP作成ライブラリ(JSZip)の読み込みに失敗しました...'); return; }
       showLoading();
       try {
-          ensureCharacterAssetsAreBackedByFiles();
           const zip = new JSZip();
           const rawCss = generateOutputCss(customizationSettings);
           const minifiedCss = generateMinifiedCss(rawCss);
@@ -2651,7 +2441,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       showLoading();
       try {
-          ensureCharacterAssetsAreBackedByFiles();
           // 1) Generate HTML + CSS (same as ZIP export)
           const rawCss = generateOutputCss(customizationSettings, { isSingleFileHtml: true });
           let minifiedCss = generateMinifiedCss(rawCss);
@@ -2854,7 +2643,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   <div id="export-all-mode-filter" class="all-mode-filter export hidden"></div>
   <div class="filter-group"> <label for="export-speaker-filter">発言者:</label> <select id="export-speaker-filter" class="speaker-filter export"><option value="all">すべての発言者</option></select> </div>
 </div>`;
-      const headingsNavHtml = headingsForNavOutput.length > 0 ? `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></div>` : "";
+      const headingsNavHtml = headingsForNavOutput.length > 0 ? `<details id="export-headings-nav-container" class="export-headings-nav"><summary id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</summary><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></details>` : "";
       const safeHtmlTitle = escapeHtml(htmlTitle); const nameBelowIconBodyClass = nameBelowIconMode ? 'name-below-icon-active' : ''; const fontBodyClass = fontFamily || 'font-noto-sans';
       const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings);
 
@@ -3126,9 +2915,7 @@ function lazyRevealMore() {
 function initializeExportHeadingsNav() {
     const navContainer = document.getElementById('export-headings-nav-container');
     const listUl = document.getElementById('export-headings-list');
-    const toggleBtn = document.getElementById('export-toggle-headings-nav');
-    const bodyEl = document.querySelector('body.export-body');
-    if (!navContainer || !listUl || !toggleBtn || !bodyEl) return;
+    if (!navContainer || !listUl) return;
     if (headingsForExport.length === 0) { listUl.innerHTML = '<li>見出しなし</li>'; navContainer.style.display = 'none'; return; }
     headingsForExport.forEach(h => {
         const li = document.createElement('li'); li.className = 'level-' + h.level;
@@ -3156,35 +2943,12 @@ function initializeExportHeadingsNav() {
             } else {
                 targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
             }
+            if (window.innerWidth <= 768 && typeof navContainer.open !== 'undefined') {
+                navContainer.open = false;
+            }
         };
         li.appendChild(a); listUl.appendChild(li);
     });
-    let isNavOpen = false;
-    toggleBtn.onclick = () => {
-        isNavOpen = !isNavOpen;
-        if (isNavOpen) {
-            navContainer.classList.add('open');
-            if (bodyEl && document.body.contains(navContainer) && getComputedStyle(navContainer).display !== 'none') {
-                 bodyEl.style.marginLeft = navContainer.offsetWidth + 'px';
-            } else if (bodyEl) {
-                 bodyEl.style.marginLeft = '220px';
-            }
-            toggleBtn.textContent = '閉';
-        } else {
-            navContainer.classList.remove('open');
-            if (bodyEl) bodyEl.style.marginLeft = '0';
-            toggleBtn.textContent = '見';
-        }
-    };
-    if (headingsForExport.length > 0 && window.innerWidth > 768) {
-        isNavOpen = false;
-        toggleBtn.click();
-    } else {
-        isNavOpen = false; navContainer.classList.remove('open');
-        navContainer.style.left = '';
-        if (bodyEl) bodyEl.style.marginLeft = '0';
-        toggleBtn.textContent = '見';
-    }
 }
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }); }
 else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }
@@ -3413,11 +3177,12 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
-.export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
-.export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
-.export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
-.export-headings-nav .nav-content { padding: 5px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.export-headings-nav { position: fixed; left: 0; top: 10px; z-index: 1000; font-size: 0.9em; overflow: visible; }
+.export-headings-nav summary#export-toggle-headings-nav { list-style: none; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; box-shadow: 2px 0 5px rgba(0,0,0,0.1); transition: background-color 0.2s; }
+.export-headings-nav summary#export-toggle-headings-nav::-webkit-details-marker { display: none; }
+.export-headings-nav summary#export-toggle-headings-nav:hover { background: #2980b9; }
+.export-headings-nav .nav-content { display: none; position: absolute; left: 100%; top: 0; width: 200px; max-height: calc(100vh - 40px); overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 5px 5px 0; padding: 10px; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.export-headings-nav[open] .nav-content { display: block; }
 .export-headings-nav h5 { margin-top: 0; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
 .export-headings-nav ul { list-style: none; padding: 0; margin: 0; }
 .export-headings-nav li a { text-decoration: none; color: #337ab7; display: block; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; }
@@ -3449,9 +3214,8 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-headings-nav { width: 180px; left: -190px; }
-    .export-headings-nav.open { left: 0px !important; }
-    .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
+    .export-headings-nav .nav-content { width: 180px; }
+    .export-headings-nav summary#export-toggle-headings-nav { padding: 8px 4px;}
 }
 /* ── rr-site-dark / rr-site-light (export) ── */
 html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
@@ -3504,11 +3268,11 @@ body.rr-site-dark .heading-item.export.level-3 { color: rgba(136,128,232,0.88) !
 body.rr-site-dark .heading-item.export.level-4 { color: rgba(136,128,232,0.80) !important; }
 body.rr-site-dark .heading-item.export.level-5 { color: rgba(136,128,232,0.60) !important; }
 body.rr-site-dark .heading-item.export.level-6 { color: rgba(136,128,232,0.44) !important; }
-body.rr-site-dark .export-headings-nav { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav .nav-content { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
 body.rr-site-dark .export-headings-nav h5 { color: #e8e8e8 !important; border-bottom-color: rgba(255,255,255,0.14) !important; }
 body.rr-site-dark .export-headings-nav li a { color: #b0aeee !important; }
 body.rr-site-dark .export-headings-nav li a:hover { color: #cccaf8 !important; background: rgba(255,255,255,0.08) !important; }
-body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
+body.rr-site-dark .export-headings-nav summary#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
 body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
 `;
    }
@@ -3544,8 +3308,6 @@ body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) 
       projectLoadInput.addEventListener('change', handleProjectLoadFile);
       settingsTabButton.addEventListener('click', () => switchSettingsTab('settings'));
       customizeTabButton.addEventListener('click', () => switchSettingsTab('customize'));
-      saveSettingsButton.addEventListener('click', saveCharacterSettings);
-      loadSettingsButton.addEventListener('click', loadCharacterSettings);
       resetCustomizationButton.addEventListener('click', resetCustomization);
       logTabsNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) handleTabChange(e.target.dataset.tab); });
       speakerFilterSelect.addEventListener('change', handleSpeakerFilterChange);

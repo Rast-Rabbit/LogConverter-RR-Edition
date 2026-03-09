@@ -92,9 +92,6 @@
                 </div>
                 <p class="text-sm text-gray-600 mb-4">ログから検出された発言者です。表示名/アイコン/向き/テーマ色/文字色/表情差分などを設定してください。</p>
                 <div id="character-settings" class="space-y-4"><p class="text-gray-500 italic">ログファイルまたはプロジェクトファイルを読み込むと表示されます。</p></div>
-                 <button id="save-settings-button" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed" disabled>設定を一時保存(ブラウザ)</button>
-                 <button id="load-settings-button" class="mt-4 ml-2 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" disabled>設定を読み込み(ブラウザ)</button>
-                 <p class="text-xs text-gray-500 mt-1">※この保存/読込はブラウザ内に一時保存されます。プロジェクトファイルとは別です。</p>
             </div>
 
             <div id="settings-panel-customize" class="hidden mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-customize">
@@ -214,6 +211,7 @@
         <footer class="app-footer">
      <h4>更新履歴</h4>
             <ul>
+                <li>2026/03/10: ローカルストレージ保存機能絶対要らないので削除。（ファイルが重いとバグって動作もしなかった）</li>
                 <li>2026/03/09: ZIP・HTML出力のダークモード未対応箇所を修正（フィルタ/タブ/見出し/右吹き出し）、見出しナビのジャンプ位置ずれを修正</li>
                 <li>2026/03/07: ZIP・HTML出力に無限スクロールを追加。大量ログの初期読み込みを80件に絞り、スクロールで逐次表示することで表示速度と負荷を改善</li>
                 <li>2026/03/04: ZIP・HTML出力にマークダウン変換を追加（ルビ・太字・打ち消し線）</li>

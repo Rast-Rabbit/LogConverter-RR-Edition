@@ -1247,8 +1247,6 @@ input:checked+.slider:before {
     border: none;
   }
   /* 主要アクションボタン: file-input-label と同じ質感（完全不透明） */
-  body.rr-site-dark #save-settings-button  { background-color: #2563eb !important; color: #fff !important; border: none !important; }
-  body.rr-site-dark #load-settings-button  { background-color: #4b5563 !important; color: #fff !important; border: none !important; }
   body.rr-site-dark #save-project-button   { background-color: #16a34a !important; color: #fff !important; border: none !important; }
   body.rr-site-dark #export-zip-button     { background-color: #4f46e5 !important; color: #fff !important; border: none !important; }
   body.rr-site-dark #export-html-button    { background-color: #6366f1 !important; color: #fff !important; border: none !important; }
