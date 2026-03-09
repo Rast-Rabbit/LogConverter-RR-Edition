@@ -3003,7 +3003,21 @@ function initializeExportHeadingsNav() {
     headingsForExport.forEach(h => {
         const li = document.createElement('li'); li.className = 'level-' + h.level;
         const a = document.createElement('a'); a.href = '#' + h.id; a.textContent = h.text;
-        a.onclick = (e) => { e.preventDefault(); const targetEl = document.getElementById(h.id); if(targetEl) targetEl.scrollIntoView({behavior:'smooth', block: 'start'}); };
+        a.onclick = (e) => {
+            e.preventDefault();
+            const targetEl = document.getElementById(h.id);
+            if (!targetEl) return;
+            if (targetEl.classList.contains('lazy-hidden')) {
+                const allHidden = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
+                const idx = allHidden.indexOf(targetEl);
+                allHidden.slice(0, idx + 1).forEach(function(el) {
+                    const prev = el.previousElementSibling;
+                    if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
+                    el.classList.remove('lazy-hidden');
+                });
+            }
+            targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
+        };
         li.appendChild(a); listUl.appendChild(li);
     });
     let isNavOpen = false;
