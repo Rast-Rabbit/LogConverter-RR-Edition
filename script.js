@@ -46,6 +46,8 @@
    let nextAliasId = 0;
    let expressionAliasMap = {}; // { "アリス": { "笑顔": "emote_0" } }
    let nextExpressionAliasId = 0;
+   let resizePerfResetTimer = null;
+   let resizePerfRafId = null;
 
 
    // Project file constants
@@ -126,6 +128,9 @@
   const PLACEHOLDER_ICON_URL = 'https://placehold.co/64x64/e0e0e0/757575?text=?';
   const LOCALSTORAGE_SETTINGS_KEY = 'logToolSettings_v11.0';
   const LOCALSTORAGE_CUSTOMIZATION_KEY = 'logToolCustomization_v10.5';
+  const BROWSER_SETTINGS_DB_NAME = 'ccfoliaLogToolBrowserStorage';
+  const BROWSER_SETTINGS_STORE_NAME = 'settings';
+  const CHARACTER_SETTINGS_STORAGE_RECORD = 'characterSettings';
   const FONT_CLASSES = [
        'font-inter', 'font-noto-sans', 'font-noto-serif',
        'font-mplus-rounded', 'font-system-sans', 'font-system-serif',
@@ -139,6 +144,7 @@
   const BACKGROUND_IMAGE_KEY = 'bg_image';
   const RENDER_CHUNK_SIZE = 50;
   const RENDER_CHUNK_DELAY = 0;
+  const HTML_EXPORT_DARK_SOLID_BG = '#253041';
 
   function escapeHtml(unsafe) { if (typeof unsafe !== 'string') return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 
@@ -178,6 +184,133 @@
        return sanitized.replace(/_+/g, '_');
   }
 
+  function isDataUrl(value) {
+      return typeof value === 'string' && value.startsWith('data:');
+  }
+
+  function dataUrlToBlob(dataUrl) {
+      if (!isDataUrl(dataUrl)) return null;
+      const matches = dataUrl.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/);
+      if (!matches) return null;
+      const mimeType = matches[1] || 'application/octet-stream';
+      const isBase64 = !!matches[2];
+      const dataPart = matches[3] || '';
+      const byteString = isBase64 ? atob(dataPart) : decodeURIComponent(dataPart);
+      const byteNumbers = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+          byteNumbers[i] = byteString.charCodeAt(i);
+      }
+      return new Blob([byteNumbers], { type: mimeType });
+  }
+
+  function getExtensionForMimeType(mimeType) {
+      const mimeMap = {
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+          'image/svg+xml': 'svg',
+          'image/bmp': 'bmp'
+      };
+      return mimeMap[mimeType] || 'bin';
+  }
+
+  function buildFileFromDataUrl(dataUrl, filenameStem) {
+      const blob = dataUrlToBlob(dataUrl);
+      if (!blob) return null;
+      const safeStem = sanitizeForFilename(filenameStem || 'asset') || 'asset';
+      const ext = getExtensionForMimeType(blob.type);
+      return createFileFromBlob(blob, `${safeStem}.${ext}`);
+  }
+
+  function openBrowserSettingsDb() {
+      return new Promise((resolve, reject) => {
+          if (!('indexedDB' in window)) {
+              resolve(null);
+              return;
+          }
+          const request = indexedDB.open(BROWSER_SETTINGS_DB_NAME, 1);
+          request.onupgradeneeded = () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains(BROWSER_SETTINGS_STORE_NAME)) {
+                  db.createObjectStore(BROWSER_SETTINGS_STORE_NAME);
+              }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error || new Error('IndexedDB open failed.'));
+      });
+  }
+
+  async function writeCharacterSettingsToBrowserStorage(settingsToSave) {
+      try {
+          const db = await openBrowserSettingsDb();
+          if (db) {
+              await new Promise((resolve, reject) => {
+                  const tx = db.transaction(BROWSER_SETTINGS_STORE_NAME, 'readwrite');
+                  tx.objectStore(BROWSER_SETTINGS_STORE_NAME).put({
+                      value: settingsToSave,
+                      savedAt: new Date().toISOString()
+                  }, CHARACTER_SETTINGS_STORAGE_RECORD);
+                  tx.oncomplete = () => resolve();
+                  tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed.'));
+                  tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted.'));
+              });
+              try {
+                  localStorage.removeItem(LOCALSTORAGE_SETTINGS_KEY);
+                  localStorage.setItem(LOCALSTORAGE_SETTINGS_KEY, JSON.stringify({ storage: 'indexeddb' }));
+              } catch (_) {}
+              return 'indexeddb';
+          }
+      } catch (error) {
+          console.warn('Falling back to LocalStorage for character settings:', error);
+      }
+
+      localStorage.setItem(LOCALSTORAGE_SETTINGS_KEY, JSON.stringify(settingsToSave));
+      return 'localStorage';
+  }
+
+  async function readCharacterSettingsFromBrowserStorage() {
+      try {
+          const db = await openBrowserSettingsDb();
+          if (db) {
+              const stored = await new Promise((resolve, reject) => {
+                  const tx = db.transaction(BROWSER_SETTINGS_STORE_NAME, 'readonly');
+                  const request = tx.objectStore(BROWSER_SETTINGS_STORE_NAME).get(CHARACTER_SETTINGS_STORAGE_RECORD);
+                  request.onsuccess = () => resolve(request.result?.value || null);
+                  request.onerror = () => reject(request.error || new Error('IndexedDB read failed.'));
+              });
+              if (stored) return stored;
+          }
+      } catch (error) {
+          console.warn('Failed to read character settings from IndexedDB:', error);
+      }
+
+      const savedSettingsJson = localStorage.getItem(LOCALSTORAGE_SETTINGS_KEY);
+      if (!savedSettingsJson) return null;
+      const parsed = JSON.parse(savedSettingsJson);
+      if (parsed && parsed.storage === 'indexeddb') return null;
+      return parsed;
+  }
+
+  function ensureCharacterAssetsAreBackedByFiles() {
+      Object.entries(characterSettings).forEach(([speaker, setting]) => {
+          if (!setting) return;
+
+          const defaultIconKey = setting.isNew ? `newchar_${speaker}` : speaker;
+          if (isDataUrl(setting.icon) && !(uploadedFiles[defaultIconKey] instanceof Blob)) {
+              const iconFile = buildFileFromDataUrl(setting.icon, `${defaultIconKey}_icon`);
+              if (iconFile) uploadedFiles[defaultIconKey] = iconFile;
+          }
+
+          Object.entries(setting.expressions || {}).forEach(([expName, dataUrl]) => {
+              const expKey = `exp_${speaker}_${expName}`;
+              if (isDataUrl(dataUrl) && !(uploadedFiles[expKey] instanceof Blob)) {
+                  const expFile = buildFileFromDataUrl(dataUrl, `${speaker}_${expName}`);
+                  if (expFile) uploadedFiles[expKey] = expFile;
+              }
+          });
+      });
+  }
   function getImagePathForKey(key, fileObject) {
       if (!fileObject || !(fileObject instanceof Blob)) { console.warn(`getImagePathForKey: Invalid fileObject for key ${key}`); return null; }
       let outputFilename = null;
@@ -755,7 +888,7 @@
        });
   }
 
-  function saveCharacterSettings() {
+  async function saveCharacterSettings() {
       if (Object.keys(characterSettings).length === 0) { alert('保存する設定がありません。'); return; }
       try {
            const settingsToSave = {};
@@ -771,17 +904,19 @@
                    isNew: !!setting.isNew
                 };
            }
-           localStorage.setItem(LOCALSTORAGE_SETTINGS_KEY, JSON.stringify(settingsToSave));
-           alert('キャラクター設定をLocalStorageに一時保存しました。');
+           const storageMode = await writeCharacterSettingsToBrowserStorage(settingsToSave);
+           const storageLabel = storageMode === 'indexeddb' ? 'ブラウザ領域' : 'LocalStorage';
+           alert(`キャラクター設定を${storageLabel}に一時保存しました。`);
       }
-      catch (error) { console.error("Error saving char settings to LocalStorage:", error); alert(`LocalStorageへの設定保存エラー: ${error.message}`); }
+      catch (error) { console.error('Error saving char settings to browser storage:', error); alert(`ブラウザへの設定保存エラー: ${error.message}`); }
   }
 
-   function loadCharacterSettings() {
+   async function loadCharacterSettings() {
       if (Object.keys(characterSettings).length === 0 && Object.keys(speakerFrequencies).length === 0) { alert('設定を適用するキャラクターがいません。ログを読み込むか新規キャラを追加してください。'); return; }
       try {
-          const savedSettingsJson = localStorage.getItem(LOCALSTORAGE_SETTINGS_KEY); if (!savedSettingsJson) { alert('LocalStorageに保存された設定が見つかりません。'); return; }
-          const loadedSettings = JSON.parse(savedSettingsJson); let settingsAppliedCount = 0;
+          const loadedSettings = await readCharacterSettingsFromBrowserStorage();
+          if (!loadedSettings) { alert('ブラウザに保存された設定が見つかりません。'); return; }
+          let settingsAppliedCount = 0;
            Object.keys(speakerFrequencies).forEach(speaker => {
               if (loadedSettings[speaker]) {
                   if (!characterSettings[speaker]) characterSettings[speaker] = { displayName: speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false, isNew: false };
@@ -822,9 +957,10 @@
               }
           });
 
-          if (settingsAppliedCount > 0) { updateSpeakerDataForExport(); populateCharacterSettingsUI(); populateSpeakerFilterUI(); renderLog(); alert(`${settingsAppliedCount}件のキャラ設定をLocalStorageから読み込み/更新しました。`); }
-           else alert('LocalStorageに一致/適用可能な保存設定がありませんでした。');
-      } catch (error) { console.error("Error loading char settings from LS:", error); alert(`LocalStorageからの設定読込エラー: ${error.message}`); }
+          ensureCharacterAssetsAreBackedByFiles();
+          if (settingsAppliedCount > 0) { updateSpeakerDataForExport(); populateCharacterSettingsUI(); populateSpeakerFilterUI(); renderLog(); alert(`${settingsAppliedCount}件のキャラ設定をブラウザから読み込み/更新しました。`); }
+           else alert('ブラウザに一致/適用可能な保存設定がありませんでした。');
+      } catch (error) { console.error('Error loading char settings from browser storage:', error); alert(`ブラウザからの設定読込エラー: ${error.message}`); }
   }
 
   function openAddNewCharacterModal() {
@@ -1351,20 +1487,7 @@
 
            for (let i = currentIndex; i < chunkEnd; i++) {
                const item = dataToSort[i];
-               try {
-                   const isMultiTabView = currentTabFilter === 'all';
-                   if (isMultiTabView && item.type === 'message' && i > 0) {
-                       let prevMessageItem = null;
-                       for (let j = i - 1; j >= 0; j--) {
-                           if (dataToSort[j].type === 'message') {
-                               prevMessageItem = dataToSort[j];
-                               break;
-                           }
-                       }
-                       if (prevMessageItem && (item.tab || 'main') !== (prevMessageItem.tab || 'main')) {
-                           const separator = document.createElement('hr'); separator.className = 'tab-separator'; fragment.appendChild(separator);
-                       }
-                   }
+               try {
                    let element;
                    if (item.type === 'message') { element = createMessageElement(item); }
                    else if (item.type === 'image') { element = createInsertedImageElement(item); }
@@ -2259,6 +2382,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const projectName = exportHtmlTitleInput.value.trim() || logFileNameBase || 'log_project'; const zipFilenameBase = exportZipFilenameInput.value.trim() || logFileNameBase || 'log_project'; const projectFilename = `${zipFilenameBase}${PROJECT_FILE_EXTENSION}`;
       showLoading();
       try {
+          ensureCharacterAssetsAreBackedByFiles();
           const zip = new JSZip(); const imgFolder = zip.folder(PROJECT_IMAGES_FOLDER.replace('/', ''));
           if (!imgFolder) throw new Error("Failed to create 'images' folder in ZIP.");
 
@@ -2486,12 +2610,13 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
   async function handleExportZip() {
       const htmlTitle = exportHtmlTitleInput.value.trim() || logFileNameBase || 'session_log_export';
-      const zipFilenameBase = exportHtmlTitleInput.value.trim() || logFileNameBase || 'session_log_export';
+      const zipFilenameBase = exportZipFilenameInput.value.trim() || logFileNameBase || 'session_log_export';
       const zipFilename = `${zipFilenameBase}.zip`;
       const itemsToExport = displayLogData;
       if (itemsToExport.length === 0) { alert('エクスポートするデータがありません。'); return; } if (typeof JSZip === 'undefined') { alert('ZIP作成ライブラリ(JSZip)の読み込みに失敗しました...'); return; }
       showLoading();
       try {
+          ensureCharacterAssetsAreBackedByFiles();
           const zip = new JSZip();
           const rawCss = generateOutputCss(customizationSettings);
           const minifiedCss = generateMinifiedCss(rawCss);
@@ -2526,8 +2651,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       showLoading();
       try {
+          ensureCharacterAssetsAreBackedByFiles();
           // 1) Generate HTML + CSS (same as ZIP export)
-          const rawCss = generateOutputCss(customizationSettings);
+          const rawCss = generateOutputCss(customizationSettings, { isSingleFileHtml: true });
           let minifiedCss = generateMinifiedCss(rawCss);
           let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
 
@@ -2935,8 +3061,10 @@ function applyExportFilters() {
         const speakerMatch = currentExportSpeaker === 'all' || itemSpeaker === currentExportSpeaker;
 
         let tabMatch = false;
-        if (currentExportTab === 'all') {
-            if (item.classList.contains('heading-item') || item.classList.contains('error-message') || itemTab === 'header') {
+        if (item.classList.contains('heading-item') || item.classList.contains('error-message')) {
+            tabMatch = true;
+        } else if (currentExportTab === 'all') {
+            if (itemTab === 'header') {
                 tabMatch = true;
             } else {
                 tabMatch = itemTab ? visibleTabsInAllModeExport.has(itemTab) : false;
@@ -3009,6 +3137,13 @@ function initializeExportHeadingsNav() {
             e.preventDefault();
             const targetEl = document.getElementById(h.id);
             if (!targetEl) return;
+            if (targetEl.classList.contains('hidden-log-item')) {
+                if (exportSpeakerFilter && currentExportSpeaker !== 'all') {
+                    currentExportSpeaker = 'all';
+                    exportSpeakerFilter.value = 'all';
+                }
+                applyExportFilters();
+            }
             if (targetEl.classList.contains('lazy-hidden')) {
                 const allHidden = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
                 const idx = allHidden.indexOf(targetEl);
@@ -3068,12 +3203,14 @@ else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadings
     return minified;
   }
 
-  function generateOutputCss(currentCustomization) {
+  function generateOutputCss(currentCustomization, options = {}) {
       const { iconSize, bubbleMaxWidth, normalBubbleColor, backgroundColor, fontSize, nameBelowIconMode, fontFamily, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImage, backgroundImageFileName } = currentCustomization;
       const placeholderLineHeight = Math.round(iconSize * 0.9); const placeholderFontSize = Math.round(iconSize * 0.5);
       const responsiveIconSize = Math.max(24, Math.round(iconSize * 0.75)); const responsivePlaceholderLineHeight = Math.round(responsiveIconSize * 0.9); const responsivePlaceholderFontSize = Math.round(responsiveIconSize * 0.5);
       const fontFamilies = { 'font-inter': "'Inter', sans-serif", 'font-noto-sans': "'Noto Sans JP', sans-serif", 'font-noto-serif': "'Noto Serif JP', serif", 'font-mplus-rounded': "'M PLUS Rounded 1c', sans-serif", 'font-system-sans': "sans-serif", 'font-system-serif': "serif", 'font-system-mono': "monospace" };
       const selectedFontFamily = fontFamilies[fontFamily] || fontFamilies['font-noto-sans'];
+      const isSingleFileHtml = !!options.isSingleFileHtml;
+      const darkPageBackground = options.darkPageBackground || HTML_EXPORT_DARK_SOLID_BG;
 
       let backgroundImageExportPath = '';
       if (backgroundImage && backgroundImageFileName && uploadedFiles[BACKGROUND_IMAGE_KEY]) {
@@ -3269,18 +3406,18 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
 .error-message.export { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px 15px; border-radius: 4px; margin: 15px 0; font-size: 0.9em; }
 .empty-log-message.export { text-align: center; color: #666; font-style: italic; padding: 30px; }
 .export-error { color: red; font-weight: bold; text-align: center; margin: 10px; padding: 5px; border: 1px solid red; background-color: #ffeeee; }
-.heading-item.export { margin: 12px 0 8px 0; padding: 5px 0; font-weight: bold; }
+.heading-item.export { margin: 12px 0 8px 0; padding: 5px 0; font-weight: bold; scroll-margin-top: 10px; }
 .heading-item.export.level-1 { font-size: 1.4em; border-bottom: 2px solid #3498db; margin-top: 20px; padding-bottom: 8px;}
 .heading-item.export.level-2 { font-size: 1.2em; border-bottom: 1px solid #95a5a6; margin-top: 15px; padding-bottom: 6px;}
 .heading-item.export.level-3 { font-size: 1.05em; margin-top: 10px; padding-bottom: 4px;}
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
 .export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
 .export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
 .export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
-.export-headings-nav .nav-content { padding: 5px; }
+.export-headings-nav .nav-content { padding: 5px; max-height: calc(100vh - 40px); overflow-y: auto; }
 .export-headings-nav h5 { margin-top: 0; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
 .export-headings-nav ul { list-style: none; padding: 0; margin: 0; }
 .export-headings-nav li a { text-decoration: none; color: #337ab7; display: block; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; }
@@ -3318,18 +3455,18 @@ body.name-below-icon-active .message-container.export.align-right .bubble.export
 }
 /* ── rr-site-dark / rr-site-light (export) ── */
 html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
-    background-image: url('img/bg.webp');
+    background-image: ${isSingleFileHtml ? 'none' : "url('img/bg.webp')"};
     background-size: cover;
     background-position: center bottom;
     background-repeat: no-repeat;
-    background-attachment: fixed;
-    background-color: #000;
+    background-attachment: ${isSingleFileHtml ? 'scroll' : 'fixed'};
+    background-color: ${isSingleFileHtml ? darkPageBackground : '#000'};
 }
-@supports (-webkit-touch-callout: none) {
+${isSingleFileHtml ? '' : `@supports (-webkit-touch-callout: none) {
     html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
         background-attachment: scroll;
     }
-}
+}`}
 body.rr-site-dark.export-body { color: #e8e8e8; }
 body.rr-site-dark.export-body.rr-in-iframe { background-color: transparent !important; }
 body.rr-site-dark.export-body:not(.rr-in-iframe) { background-color: transparent !important; }
@@ -3376,6 +3513,22 @@ body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) 
 `;
    }
 
+  function handleWindowResize() {
+      if (resizePerfRafId) {
+          cancelAnimationFrame(resizePerfRafId);
+      }
+      resizePerfRafId = requestAnimationFrame(() => {
+          document.body.classList.add('rr-resizing');
+          resizePerfRafId = null;
+      });
+      if (resizePerfResetTimer) {
+          clearTimeout(resizePerfResetTimer);
+      }
+      resizePerfResetTimer = setTimeout(() => {
+          document.body.classList.remove('rr-resizing');
+      }, 180);
+  }
+
   function initializeApp() {
       // iframe内かどうかを判定（ダーク時の背景透過切り替えに使用）
       if (window.self !== window.top) {
@@ -3406,6 +3559,7 @@ body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) 
       genericModalCloseBtn.addEventListener('click', () => closeModal(genericModal));
       genericModalCancelBtn.addEventListener('click', () => closeModal(genericModal));
       window.addEventListener('click', (event) => { if (event.target === genericModal) closeModal(genericModal); });
+      window.addEventListener('resize', handleWindowResize);
 
       fontSizeSlider.addEventListener('input', () => { fontSizeValueSpan.textContent = fontSizeSlider.value; });
       iconSizeSlider.addEventListener('input', () => { iconSizeValueSpan.textContent = iconSizeSlider.value; });
