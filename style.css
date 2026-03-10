@@ -217,59 +217,46 @@ body {
     text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
 }
 
-/* Narration Mode Styles */
-.narration-container {
-    padding: 2px 4px;
-    margin-left: 0;
-    font-size: inherit;
-    line-height: inherit;
-    /* color applied by JS */
+.message-body {
+    min-height: 1.4em;
 }
 
-
-/* Narration mode action buttons (inline, with spacing) */
-.narration-action-buttons {
-    display: inline-flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-left: 10px;
-    vertical-align: middle;
-}
-.message-item[data-display-mode="narration"] .narration-tab,
-.message-item[data-display-mode="narration"] .narration-speaker {
-    display: none;
-}
-
-/* These specific parts are hidden, their content is in .narration-container */
-
-.narration-tab {
-    font-size: 0.8em;
-    color: #666;
-    margin-right: 0.5em;
-    text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
-}
-
-.narration-speaker {
-    font-weight: bold;
-    margin-right: 0.25em;
-    /* Text color from JS */
-    text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color);
-}
-
-.narration-message {
-    display: block;
-    /* Text color from JS */
-}
-
-/* Changed to block for consistency if narration is its own line */
+/* Narration mode reuses the same editable node with lighter chrome. */
 .message-item[data-display-mode="narration"] .message-container {
+    display: block;
+}
+
+.message-item[data-display-mode="narration"] .icon-container,
+.message-item[data-display-mode="narration"] .speaker-name-default {
     display: none;
 }
 
-.message-item[data-display-mode="bubble"] .narration-container {
+.message-item[data-display-mode="narration"] .content-container {
+    display: block;
+}
+
+.message-item[data-display-mode="narration"] .message-body {
+    max-width: 100%;
+    margin: 0;
+    padding: 6px 2.75rem 6px 12px;
+    border-radius: 0;
+    border-left: 3px solid rgba(99, 102, 241, 0.45);
+    background: rgba(99, 102, 241, 0.05);
+    box-shadow: none;
+}
+
+.message-item[data-display-mode="narration"] .message-body::before {
     display: none;
 }
 
+.message-item[data-display-mode="narration"] .message-container.align-right .content-container {
+    text-align: left;
+}
+
+.message-item[data-display-mode="narration"] .message-body.bubble-right {
+    margin-left: 0;
+    margin-right: 0;
+}
 /* Display Mode Toggle Button */
 .display-mode-toggle {
     position: absolute;
@@ -1112,6 +1099,10 @@ input:checked+.slider:before {
   body.rr-site-dark .text-indigo-600   { color: #8880E8 !important; }
   body.rr-site-dark .text-blue-800     { color: #b0aeee !important; }
   body.rr-site-dark .text-blue-600     { color: #9f98ef !important; }
+  body.rr-site-dark .message-item[data-display-mode="narration"] .message-body {
+    background: rgba(255,255,255,0.04);
+    border-left-color: rgba(176,174,238,0.55);
+  }
   /* フォーム */
   body.rr-site-dark input,
   body.rr-site-dark textarea,

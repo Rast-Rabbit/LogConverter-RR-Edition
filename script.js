@@ -138,6 +138,7 @@
   const RENDER_CHUNK_SIZE = 50;
   const RENDER_CHUNK_DELAY = 0;
   const HTML_EXPORT_DARK_SOLID_BG = '#253041';
+  const SINGLE_FILE_IMAGE_PLACEHOLDER_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
   function escapeHtml(unsafe) { if (typeof unsafe !== 'string') return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 
@@ -1306,61 +1307,136 @@
        setTimeout(renderChunkOptimized, 0);
   }
 
-  function createMessageElement(logItem) {
-      if (!logItem || logItem.type !== 'message') return null;
-      const container = document.createElement('div'); container.className = 'message-item'; container.dataset.itemId = logItem.id; container.dataset.tab = logItem.tab || 'main'; container.dataset.speaker = logItem.speaker || '不明';
-
+  function getMessageRenderState(logItem) {
       const setting = characterSettings[logItem.speaker] || { displayName: logItem.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
       const isForcedNarration = setting.forceNarration || false;
       const currentDisplayMode = isForcedNarration ? 'narration' : (logItem.displayMode || 'bubble');
-      container.dataset.displayMode = currentDisplayMode;
-
       const finalAlignment = logItem.alignmentOverride || setting.alignment || 'left';
-
       const messageTextColor = setting.customTextColor ||
         (currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor);
 
       const placeholderSrc = PLACEHOLDER_ICON_URL.replace('64x64', `${customizationSettings.iconSize}x${customizationSettings.iconSize}`);
-      let currentIconSrc = placeholderSrc; const iconKey = logItem.iconKey || 'default';
+      let currentIconSrc = placeholderSrc;
+      const iconKey = logItem.iconKey || 'default';
 
-      if (iconKey === 'override' && logItem.overrideIconSrc) { currentIconSrc = logItem.overrideIconSrc; }
-      else if (iconKey !== 'default' && setting.expressions?.[iconKey]) { currentIconSrc = setting.expressions[iconKey]; }
-      else if (setting.icon) { currentIconSrc = setting.icon; }
+      if (iconKey === 'override' && logItem.overrideIconSrc) currentIconSrc = logItem.overrideIconSrc;
+      else if (iconKey !== 'default' && setting.expressions?.[iconKey]) currentIconSrc = setting.expressions[iconKey];
+      else if (setting.icon) currentIconSrc = setting.icon;
+
+      return { setting, isForcedNarration, currentDisplayMode, finalAlignment, messageTextColor, placeholderSrc, currentIconSrc, iconKey };
+  }
+
+  function applyMessageBubbleStyle(messageBody, alignment) {
+      if (!messageBody) return;
+      messageBody.classList.remove('bubble-right');
+      if (alignment === 'right') {
+          messageBody.classList.add('bubble-right');
+          const rightColor = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
+          messageBody.style.setProperty('--bubble-bg-color', rightColor);
+          messageBody.style.setProperty('--bubble-arrow-color', rightColor);
+      } else {
+          const normalColor = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
+          messageBody.style.setProperty('--bubble-bg-color', normalColor);
+          messageBody.style.setProperty('--bubble-arrow-color', normalColor);
+      }
+  }
+
+  function updateMessageElementPresentation(messageElement, logItem) {
+      if (!messageElement || !logItem) return;
+      const state = getMessageRenderState(logItem);
+      const effectiveBubbleAlignment = state.currentDisplayMode === 'bubble' ? state.finalAlignment : 'left';
+      const messageContainer = messageElement.querySelector('.message-container');
+      const iconImg = messageElement.querySelector('img.message-icon');
+      const speakerNameSpan = messageElement.querySelector('.speaker-name-default');
+      const messageBody = messageElement.querySelector('.message-body');
+      const toggleButton = messageElement.querySelector('.display-mode-toggle');
+      const toggleAlignBtn = messageElement.querySelector('.advanced-action-buttons [data-action="toggle-alignment"]');
+
+      messageElement.dataset.displayMode = state.currentDisplayMode;
+      if (messageContainer) messageContainer.classList.toggle('align-right', effectiveBubbleAlignment === 'right');
+
+      if (iconImg) {
+          iconImg.src = state.currentIconSrc;
+          iconImg.alt = `${state.setting.displayName} icon (${state.iconKey})`;
+          iconImg.style.borderColor = state.setting.color || logItem.color || '#000000';
+      }
+
+      if (speakerNameSpan) {
+          speakerNameSpan.innerHTML = `${escapeHtml(state.setting.displayName)} <span class="text-xs font-normal text-gray-500" style="text-shadow: none;">[${escapeHtml(logItem.tab || 'main')}]</span>`;
+          speakerNameSpan.style.color = state.messageTextColor;
+      }
+
+      if (messageBody) {
+          applyMessageBubbleStyle(messageBody, effectiveBubbleAlignment);
+          messageBody.style.color = state.messageTextColor;
+      }
+
+      if (toggleButton) {
+          toggleButton.textContent = state.currentDisplayMode === 'narration' ? '💬' : '📝';
+          toggleButton.disabled = state.isForcedNarration;
+          if (state.isForcedNarration) {
+              toggleButton.title = 'キャラクター設定により地の文に固定されています';
+              toggleButton.style.cursor = 'not-allowed';
+          } else {
+              toggleButton.title = '表示モード切替 (フキダシ/描写)';
+              toggleButton.style.cursor = 'pointer';
+          }
+      }
+
+      if (toggleAlignBtn) {
+          toggleAlignBtn.textContent = state.finalAlignment === 'left' ? '右向きに' : '左向きに';
+      }
+  }
+
+  function createMessageElement(logItem) {
+      if (!logItem || logItem.type !== 'message') return null;
+      const container = document.createElement('div'); container.className = 'message-item'; container.dataset.itemId = logItem.id; container.dataset.tab = logItem.tab || 'main'; container.dataset.speaker = logItem.speaker || '不明';
+      const state = getMessageRenderState(logItem);
+      container.dataset.displayMode = state.currentDisplayMode;
 
       const messageContainer = document.createElement('div');
-      messageContainer.className = `message-container ${finalAlignment === 'right' ? 'align-right' : ''}`;
+      messageContainer.className = 'message-container';
 
       const iconContainer = document.createElement('div'); iconContainer.className = 'icon-container';
-      const iconImg = document.createElement('img'); iconImg.src = currentIconSrc; iconImg.alt = `${setting.displayName} icon (${iconKey})`; iconImg.className = 'w-full h-full rounded-full object-cover icon-border bg-gray-200 message-icon';
-      iconImg.style.borderColor = setting.color || logItem.color || '#000000';
+      const iconImg = document.createElement('img'); iconImg.src = state.currentIconSrc; iconImg.alt = `${state.setting.displayName} icon (${state.iconKey})`; iconImg.className = 'w-full h-full rounded-full object-cover icon-border bg-gray-200 message-icon';
+      iconImg.style.borderColor = state.setting.color || logItem.color || '#000000';
       iconImg.loading = 'lazy'; iconImg.style.objectPosition = '50% 0%'; iconImg.title = 'クリックしてアイコンを変更';
-      iconImg.onerror = (e) => { const target = e.target; const failedSrc = target.src; if (failedSrc === placeholderSrc) return; let intendedSrc = placeholderSrc; const currentKey = logItem.iconKey || 'default'; if (currentKey === 'override' && logItem.overrideIconSrc) intendedSrc = logItem.overrideIconSrc; else if (currentKey !== 'default' && setting.expressions?.[currentKey]) intendedSrc = setting.expressions[currentKey]; else if (setting.icon) intendedSrc = setting.icon; if (failedSrc === intendedSrc) { if (currentKey === 'override') target.src = setting.icon || placeholderSrc; else if (currentKey !== 'default') target.src = setting.icon || placeholderSrc; else target.src = placeholderSrc; } else { target.src = placeholderSrc; } };
+      iconImg.onerror = (e) => {
+          const target = e.target;
+          const liveState = getMessageRenderState(logItem);
+          const failedSrc = target.src;
+          if (failedSrc === liveState.placeholderSrc) return;
+          let intendedSrc = liveState.placeholderSrc;
+          const currentKey = logItem.iconKey || 'default';
+          if (currentKey === 'override' && logItem.overrideIconSrc) intendedSrc = logItem.overrideIconSrc;
+          else if (currentKey !== 'default' && liveState.setting.expressions?.[currentKey]) intendedSrc = liveState.setting.expressions[currentKey];
+          else if (liveState.setting.icon) intendedSrc = liveState.setting.icon;
+          if (failedSrc === intendedSrc) {
+              if (currentKey === 'override') target.src = liveState.setting.icon || liveState.placeholderSrc;
+              else if (currentKey !== 'default') target.src = liveState.setting.icon || liveState.placeholderSrc;
+              else target.src = liveState.placeholderSrc;
+          } else {
+              target.src = liveState.placeholderSrc;
+          }
+      };
       iconImg.addEventListener('click', (event) => { event.stopPropagation(); triggerIconSelectionDropdown(logItem.id, logItem.speaker, event.currentTarget); });
       iconContainer.appendChild(iconImg);
       messageContainer.appendChild(iconContainer);
 
       const contentContainer = document.createElement('div'); contentContainer.className = 'content-container';
-      const speakerNameSpan = document.createElement('span'); speakerNameSpan.className = 'speaker-name-default'; speakerNameSpan.innerHTML = `${escapeHtml(setting.displayName)} <span class="text-xs font-normal text-gray-500" style="text-shadow: none;">[${escapeHtml(logItem.tab || 'main')}]</span>`;
-      speakerNameSpan.style.color = messageTextColor;
+      const speakerNameSpan = document.createElement('span'); speakerNameSpan.className = 'speaker-name-default'; speakerNameSpan.innerHTML = `${escapeHtml(state.setting.displayName)} <span class="text-xs font-normal text-gray-500" style="text-shadow: none;">[${escapeHtml(logItem.tab || 'main')}]</span>`;
+      speakerNameSpan.style.color = state.messageTextColor;
       speakerNameSpan.title = 'クリックして発言者を変更';
       speakerNameSpan.addEventListener('click', (event) => { event.stopPropagation(); triggerSpeakerSelectionDropdown(logItem.id, event.currentTarget); });
 
-      const bubbleDiv = document.createElement('div');
-      bubbleDiv.className = 'bubble bubble-left';
-      if (finalAlignment === 'right') {
-        bubbleDiv.classList.add('bubble-right');
-        const rc = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
-        bubbleDiv.style.setProperty('--bubble-bg-color', rc);
-        bubbleDiv.style.setProperty('--bubble-arrow-color', rc);
-      } else {
-        const nc = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
-        bubbleDiv.style.setProperty('--bubble-bg-color', nc);
-        bubbleDiv.style.setProperty('--bubble-arrow-color', nc);
-      }
-      bubbleDiv.style.color = messageTextColor;
-
-      bubbleDiv.innerHTML = logItem.message; bubbleDiv.contentEditable = "true"; bubbleDiv.dataset.itemId = logItem.id; bubbleDiv.addEventListener('blur', handleMessageEdit);
-      contentContainer.appendChild(speakerNameSpan); contentContainer.appendChild(bubbleDiv);
+      const messageBody = document.createElement('div');
+      messageBody.className = 'bubble message-body bubble-left';
+      messageBody.innerHTML = logItem.message;
+      messageBody.contentEditable = 'true';
+      messageBody.dataset.itemId = logItem.id;
+      messageBody.addEventListener('blur', handleMessageEdit);
+      contentContainer.appendChild(speakerNameSpan);
+      contentContainer.appendChild(messageBody);
 
       const actionButtonContainer = document.createElement('div'); actionButtonContainer.className = 'action-button-container';
       const advancedActionButtonContainer = document.createElement('div'); advancedActionButtonContainer.className = 'advanced-action-buttons';
@@ -1381,8 +1457,8 @@
     if (insertImgBtn) actionButtonContainer.appendChild(insertImgBtn);
     if (deleteBtnBubble) actionButtonContainer.appendChild(deleteBtnBubble);
 if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
-      const toggleAlignBtnText = finalAlignment === 'left' ? '右向きに' : '左向きに';
-      const toggleAlignBtn = createActionButton(toggleAlignBtnText, 'action-button-custom', () => toggleMessageAlignment(logItem.id));
+      const toggleAlignBtn = createActionButton(state.finalAlignment === 'left' ? '右向きに' : '左向きに', 'action-button-custom', () => toggleMessageAlignment(logItem.id));
+      toggleAlignBtn.dataset.action = 'toggle-alignment';
       const addChatBtn = createActionButton('発言追加', 'action-button-custom', () => openAddChatItemModal(logItem.id));
       const addHeadingBtn = createActionButton('見出し追加', 'action-button-custom', () => openAddHeadingModal(logItem.id));
       if (toggleAlignBtn) advancedActionButtonContainer.appendChild(toggleAlignBtn);
@@ -1391,33 +1467,16 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       messageContainer.appendChild(contentContainer);
       container.appendChild(messageContainer);
-
-      const narrationContainer = document.createElement('div'); narrationContainer.className = 'narration-container';
-      narrationContainer.style.color = messageTextColor;
-      const narrationTab = document.createElement('span'); narrationTab.className = 'narration-tab'; narrationTab.textContent = `[${escapeHtml(logItem.tab || 'main')}]`;
-      const narrationSpeaker = document.createElement('span'); narrationSpeaker.className = 'narration-speaker'; narrationSpeaker.textContent = `${escapeHtml(setting.displayName)}:`;
-      const narrationMessage = document.createElement('span'); narrationMessage.className = 'narration-message'; narrationMessage.innerHTML = logItem.message; narrationMessage.contentEditable = "true"; narrationMessage.dataset.itemId = logItem.id; narrationMessage.addEventListener('blur', handleMessageEdit);
-
-      const narrationLine = document.createElement('div');
-      narrationLine.appendChild(narrationTab);
-      narrationLine.appendChild(narrationSpeaker);
-      narrationLine.appendChild(narrationMessage);
-      narrationContainer.appendChild(narrationLine);
-      container.appendChild(narrationContainer);
       container.appendChild(actionButtonContainer);
       container.appendChild(advancedActionButtonContainer);
 
-      const toggleButton = document.createElement('button'); 
-      toggleButton.className = 'display-mode-toggle'; 
-      toggleButton.title = '表示モード切替 (フキダシ/描写)'; 
-      toggleButton.textContent = (currentDisplayMode === 'narration') ? '💬' : '📝'; 
+      const toggleButton = document.createElement('button');
+      toggleButton.className = 'display-mode-toggle';
+      toggleButton.title = '表示モード切替 (フキダシ/描写)';
+      toggleButton.textContent = state.currentDisplayMode === 'narration' ? '💬' : '📝';
       toggleButton.onclick = () => toggleMessageDisplayMode(logItem.id);
-      toggleButton.disabled = isForcedNarration;
-      if (isForcedNarration) {
-        toggleButton.title = 'キャラクター設定により地の文に固定されています';
-        toggleButton.style.cursor = 'not-allowed';
-      }
       container.appendChild(toggleButton);
+      updateMessageElementPresentation(container, logItem);
       return container;
   }
 
@@ -1428,7 +1487,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       button.onclick = onClick;
       return button;
   }
-
   function toggleMessageDisplayMode(itemId) {
       const itemIndex = displayLogData.findIndex(item => item.id === itemId && item.type === 'message'); if (itemIndex === -1) return;
 
@@ -1438,9 +1496,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const currentMode = displayLogData[itemIndex].displayMode || 'bubble'; const newMode = (currentMode === 'bubble') ? 'narration' : 'bubble'; displayLogData[itemIndex].displayMode = newMode;
       const elementToUpdate = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
       if (elementToUpdate) {
-          elementToUpdate.dataset.displayMode = newMode;
-          const toggleButton = elementToUpdate.querySelector('.display-mode-toggle');
-          if (toggleButton) toggleButton.textContent = (newMode === 'narration') ? '💬' : '📝';
+          updateMessageElementPresentation(elementToUpdate, displayLogData[itemIndex]);
       }
   }
   function toggleMessageAlignment(itemId) {
@@ -1455,34 +1511,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       const messageElement = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
       if (messageElement) {
-          const messageContainer = messageElement.querySelector('.message-container');
-          const bubbleDiv = messageElement.querySelector('.bubble');
-          const toggleBtn = messageElement.querySelector('.advanced-action-buttons button:first-child');
-
-          if (messageContainer && bubbleDiv) {
-              const finalAlignmentForRender = logItem.alignmentOverride || (charSetting.alignment || 'left');
-
-              messageContainer.classList.toggle('align-right', finalAlignmentForRender === 'right');
-
-              bubbleDiv.classList.remove('bubble-right');
-              if (finalAlignmentForRender === 'right') {
-                  bubbleDiv.classList.add('bubble-right');
-                  const rc = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
-                  bubbleDiv.style.setProperty('--bubble-bg-color', rc);
-                  bubbleDiv.style.setProperty('--bubble-arrow-color', rc);
-              } else {
-                  const nc = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
-                  bubbleDiv.style.setProperty('--bubble-bg-color', nc);
-                  bubbleDiv.style.setProperty('--bubble-arrow-color', nc);
-              }
-
-              if (toggleBtn) {
-                  toggleBtn.textContent = finalAlignmentForRender === 'left' ? '右向きに' : '左向きに';
-              }
-          }
+          updateMessageElementPresentation(messageElement, logItem);
       }
   }
-
   function createInsertedImageElement(imageItem) {
       if (!imageItem || imageItem.type !== 'image') return null;
       const container = document.createElement('div'); container.className = 'inserted-image-container my-2 image-item'; container.dataset.itemId = imageItem.id;
@@ -1713,23 +1744,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   function createDropdownIconPreview(src) { const img = document.createElement('img'); img.src = src; img.alt = ''; img.onerror = (e) => { e.target.style.display = 'none'; }; return img; }
 
   function updateMessageIconElement(messageElement, logItem) {
-      const iconImg = messageElement.querySelector('img.message-icon');
-      if (iconImg) {
-          const setting = characterSettings[logItem.speaker] || { expressions: {}, icon: null, displayName: logItem.speaker };
-          const placeholderSrc = PLACEHOLDER_ICON_URL.replace('64x64', `${customizationSettings.iconSize}x${customizationSettings.iconSize}`);
-          let newIconSrc = placeholderSrc;
-          const iconKey = logItem.iconKey || 'default';
-
-          if (iconKey === 'override' && logItem.overrideIconSrc) {
-              newIconSrc = logItem.overrideIconSrc;
-          } else if (iconKey !== 'default' && setting.expressions?.[iconKey]) {
-              newIconSrc = setting.expressions[iconKey];
-          } else if (setting.icon) {
-              newIconSrc = setting.icon;
-          }
-          iconImg.src = newIconSrc;
-          iconImg.alt = `${setting.displayName} icon (${iconKey})`;
-      }
+      updateMessageElementPresentation(messageElement, logItem);
   }
 
   function handleMessageIconSelection(event) {
@@ -2422,6 +2437,29 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
        finally { hideLoading(); }
   }
 
+  function buildSingleFileImageAttributes(source, singleFileOptions) {
+      if (!source) return 'src=""';
+      const safeSource = escapeHtml(source);
+      if (!singleFileOptions || !singleFileOptions.assetPayload || !singleFileOptions.sourceToAssetId) {
+          return `src="${safeSource}"`;
+      }
+
+      const assetData = source.startsWith('data:') ? source : (singleFileOptions.imageDataUrlMap?.get(source) || null);
+      if (!assetData) {
+          return `src="${safeSource}"`;
+      }
+
+      const assetLookupKey = assetData;
+      let assetId = singleFileOptions.sourceToAssetId.get(assetLookupKey);
+      if (!assetId) {
+          assetId = `asset_${singleFileOptions.sourceToAssetId.size}`;
+          singleFileOptions.sourceToAssetId.set(assetLookupKey, assetId);
+          singleFileOptions.assetPayload[assetId] = assetData;
+      }
+
+      return `src="${escapeHtml(SINGLE_FILE_IMAGE_PLACEHOLDER_DATA_URL)}" data-asset-id="${assetId}"`;
+  }
+
   async function handleExportSingleHtml() {
       const htmlTitle = exportHtmlTitleInput.value.trim() || logFileNameBase || 'session_log_export';
       const fileBase = exportZipFilenameInput.value.trim() || logFileNameBase || 'session_log_export';
@@ -2432,12 +2470,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       showLoading();
       try {
-          // 1) Generate HTML + CSS (same as ZIP export)
           const rawCss = generateOutputCss(customizationSettings, { isSingleFileHtml: true });
           let minifiedCss = generateMinifiedCss(rawCss);
-          let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
 
-          // 2) Build a map: "images/xxx.png" -> "data:image/webp;base64,..."
           const imageDataUrlMap = new Map();
           const conversions = [];
           for (const [key, fileObject] of Object.entries(uploadedFiles)) {
@@ -2451,24 +2486,24 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           }
           await Promise.all(conversions);
 
-          // 3) Replace image references inside CSS + HTML
+          const singleFileExportOptions = {
+              imageDataUrlMap,
+              sourceToAssetId: new Map(),
+              assetPayload: {}
+          };
+          let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, singleFileExportOptions);
+
           for (const [imagePath, dataUrl] of imageDataUrlMap.entries()) {
-              // Replace in HTML attributes (src/href/etc)
               outputHtml = outputHtml.split(imagePath).join(dataUrl);
-              // Replace in CSS url(...)
               minifiedCss = minifiedCss.split(imagePath).join(dataUrl);
           }
 
-          // 4) Inline CSS into HTML
-          // Try to replace link tag that points to style.css (and also cover variants)
           outputHtml = outputHtml.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i, `<style>${minifiedCss}</style>`);
-          // If link tag not found, inject before </head>
           if (!outputHtml.includes(`<style>${minifiedCss}</style>`)) {
               outputHtml = outputHtml.replace(/<\/head>/i, `<style>${minifiedCss}</style>
 </head>`);
           }
 
-          // 5) Download
           const blob = new Blob([outputHtml], { type: 'text/html;charset=utf-8' });
           const downloadUrl = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -2539,7 +2574,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       });
   }
 
-  function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, _embeddedJsContent_unused) {
+  function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, outputOptionsRaw) {
+      const outputOptions = (outputOptionsRaw && typeof outputOptionsRaw === 'object') ? outputOptionsRaw : {};
       const { iconSize, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
       let logBodyContent = ''; let headingsForNavOutput = [];
 
@@ -2583,16 +2619,25 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                   const placeholderDisplay = !iconRelativePath ? 'inline-block' : 'none';
                   const imageDisplay = iconRelativePath ? 'block' : 'none';
                   const placeholderChar = escapeHtml(speakerName).charAt(0) || '?';
+                  const iconImageAttributes = iconRelativePath ? buildSingleFileImageAttributes(iconRelativePath, outputOptions) : 'src=""';
 
                   const bubbleBgStyle = finalAlignment === 'right' ?
                                          `--bubble-bg-color: ${rightBubbleColor}; --bubble-arrow-color: ${rightBubbleColor};` :
                                          `--bubble-bg-color: ${normalBubbleColor}; --bubble-arrow-color: ${normalBubbleColor};`;
 
-                  logBodyContent += `
+                  if (finalDisplayMode === 'narration') {
+                      logBodyContent += `
+<div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
+  <div class="narration-container export" style="${textStyle}">
+      <span class="narration-tab">[${escapeHtml(item.tab || 'main')}]</span><span class="narration-speaker">${escapeHtml(speakerName)}:</span> <span class="narration-message">${parseMarkdownForExport(item.message)}</span>
+  </div>
+</div>\n`;
+                  } else {
+                      logBodyContent += `
 <div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
   <div class="message-container export ${finalAlignment === 'right' ? 'align-right' : ''}">
       <div class="icon-container export" style="width:${iconSize}px; height:${iconSize}px;">
-          <img src="${iconRelativePath}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+          <img ${iconImageAttributes} alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
           <span class="icon-placeholder export" style="display: ${placeholderDisplay}; border-color: ${iconBorderColor}; line-height: ${Math.round(iconSize*0.9)}px; font-size: ${Math.round(iconSize*0.5)}px;">${placeholderChar}</span>
       </div>
       <div class="content-container export">
@@ -2600,10 +2645,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           <div class="bubble export bubble-left" style="${bubbleBgStyle} ${textStyle}">${parseMarkdownForExport(item.message)}</div>
       </div>
   </div>
-  <div class="narration-container export" style="${textStyle}">
-      <span class="narration-tab">[${escapeHtml(item.tab || 'main')}]</span><span class="narration-speaker">${escapeHtml(speakerName)}:</span> <span class="narration-message">${parseMarkdownForExport(item.message)}</span>
-  </div>
 </div>\n`;
+                  }
               } else if (item.type === 'image') {
                    let imageRelativePath = ''; const imageId = item.id;
                    const isHeader = item.anchorId === HEADER_IMAGE_ANCHOR;
@@ -2615,9 +2658,10 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                        const imgDataFromFullLog = displayLogData.find(d => d.id === imageId); imageRelativePath = imgDataFromFullLog?.src || '';
                    }
                    const imageAlt = item.caption ? escapeHtml(item.caption) : `挿入画像 ${imageId}`;
+                   const insertedImageAttributes = imageRelativePath ? buildSingleFileImageAttributes(imageRelativePath, outputOptions) : 'src=""';
                    logBodyContent += `
 <div class="inserted-image-container export log-item" data-tab="${escapeHtml(dataTab)}" data-speaker="${escapeHtml(dataSpeaker)}">
-  <img src="${imageRelativePath}" alt="${imageAlt}" class="inserted-image export" loading="lazy" ${imageRelativePath ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
+  <img ${insertedImageAttributes} alt="${imageAlt}" class="inserted-image export" loading="lazy" ${imageRelativePath ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
   ${!imageRelativePath ? `<p class="image-error-placeholder export">[画像 ${escapeHtml(imageId)} ファイル不明]</p>` : ''}`;
                    if (item.caption) { logBodyContent += `\n    <p class="image-caption export">${escapeHtml(item.caption)}</p>`; } logBodyContent += `\n</div>\n`;
               } else if (item.type === 'heading') {
@@ -2634,7 +2678,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 </div>`;
       const headingsNavHtml = headingsForNavOutput.length > 0 ? `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></div>` : "";
       const safeHtmlTitle = escapeHtml(htmlTitle); const fontBodyClass = fontFamily || 'font-noto-sans';
-      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings);
+      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings, outputOptions.assetPayload || null);
 
       const bodyClasses = [fontBodyClass, 'export-body', 'rr-site-light'];
       if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
@@ -2649,11 +2693,12 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${safeHtmlTitle}</title><link rel="stylesheet" href="style.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet"></head>
 <body class="${bodyClasses.join(' ')}">${themeToggleBtnHtml}${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1>${filterControlsHtml}<div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
   }
-  function generateEmbeddedJsForExport(speakerDataForExport, headingsData, baseTextColor, textEdgeColor, customSettings) {
+  function generateEmbeddedJsForExport(speakerDataForExport, headingsData, baseTextColor, textEdgeColor, customSettings, singleFileAssetPayload) {
        const speakerMapString = JSON.stringify(speakerDataForExport || {});
        const headingsDataString = JSON.stringify(headingsData || []);
        const baseTextColorString = JSON.stringify(baseTextColor || '#333333');
        const textEdgeColorString = JSON.stringify(textEdgeColor || '#ffffff');
+       const singleFileAssetString = JSON.stringify(singleFileAssetPayload || {});
        const s = customSettings || {};
        const exportThemeColorsString = JSON.stringify({
          lightNormal: s.normalBubbleColor || '#ffffff',
@@ -2677,6 +2722,7 @@ let lazyRevealObserver = null;
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
 const exportThemeColors = ${exportThemeColorsString};
 const headingsForExport = ${headingsDataString};
+let singleFileAssets = ${singleFileAssetString};
 let currentExportTheme = 'light';
 // toggleExportTheme は function 宣言のためホイストされる。early return より前に window へ公開
 window.toggleExportTheme = function() {
@@ -2689,6 +2735,19 @@ const exportLogTabsNav = document.getElementById('export-log-tabs'); const expor
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
 const allLogItems = exportLogDisplay ? Array.from(exportLogDisplay.querySelectorAll('.log-item')) : [];
 if (!exportLogDisplay) { console.error("Export log display not found."); return; }
+
+function hydrateSingleFileAssets() {
+    if (!singleFileAssets || Object.keys(singleFileAssets).length === 0) return;
+    document.querySelectorAll('img[data-asset-id]').forEach(function(img) {
+        const assetId = img.getAttribute('data-asset-id');
+        const assetSrc = singleFileAssets[assetId];
+        if (assetSrc) img.src = assetSrc;
+        img.removeAttribute('data-asset-id');
+    });
+    singleFileAssets = null;
+}
+
+hydrateSingleFileAssets();
 
 document.documentElement.style.setProperty('--text-edge-color', exportTextEdgeColor);
 
@@ -3103,10 +3162,6 @@ color: var(--base-text-color);
 .message-item.export { position: relative; }
 .message-container.export { display: flex; align-items: flex-start; }
 .narration-container.export { padding: 2px 4px; line-height: inherit; }
-.message-item.export[data-display-mode="narration"] .message-container.export { display: none; }
-.message-item.export[data-display-mode="bubble"] .narration-container.export { display: none; }
-.message-item.export[data-display-mode="narration"] .narration-tab,
-.message-item.export[data-display-mode="narration"] .narration-speaker { display: none; }
 
 .message-container.export.align-right { flex-direction: row-reverse; }
 .message-container.export.align-right .icon-container.export { margin-left: 12px; margin-right: 0; }
