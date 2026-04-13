@@ -713,6 +713,15 @@ body.headings-nav-open {
     background-color: #545b62;
 }
 
+.modal-actions .btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal-actions .btn-danger:hover {
+    background-color: #b02a37;
+}
+
 
 /* Other Styles */
 .inserted-image-container {

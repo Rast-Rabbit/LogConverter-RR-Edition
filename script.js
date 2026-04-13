@@ -655,6 +655,13 @@
           expressionSection.appendChild(addForm);
           container.appendChild(expressionSection);
 
+          const mergeBtn = document.createElement('button');
+          mergeBtn.textContent = '別キャラクターに統合…';
+          mergeBtn.className = 'mt-2 text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50';
+          mergeBtn.title = 'この発言者の発言をすべて別のキャラクターに統合し、このキャラクター設定を削除します';
+          mergeBtn.addEventListener('click', () => openMergeCharacterModal(speaker));
+          container.appendChild(mergeBtn);
+
           fragment.appendChild(container);
       });
       characterSettingsDiv.appendChild(fragment);
@@ -744,6 +751,94 @@
                }
            }
        });
+  }
+
+  function openMergeCharacterModal(sourceSpeaker) {
+      const otherSpeakers = Object.keys(characterSettings).filter(s => s !== sourceSpeaker && s !== 'system');
+      if (otherSpeakers.length === 0) {
+          alert('統合先となる他のキャラクターが存在しません。');
+          return;
+      }
+      genericModalTitle.textContent = '別キャラクターに統合';
+      const sourceDisplayName = characterSettings[sourceSpeaker]?.displayName || sourceSpeaker;
+      const optionsHtml = otherSpeakers
+          .map(s => `<option value="${escapeHtml(s)}">${escapeHtml(characterSettings[s]?.displayName || s)}</option>`)
+          .join('');
+      genericModalBody.innerHTML = `
+          <p class="text-sm text-gray-700 mb-3">
+              「<strong>${escapeHtml(sourceDisplayName)}</strong>」の発言をすべて以下のキャラクターに統合します。<br>
+              テーマ色・文字色・アイコン等は統合先の設定に置き換わります。<br>
+              この操作は取り消せません。
+          </p>
+          <div class="modal-form-group">
+              <label for="merge-target-select">統合先キャラクター:</label>
+              <select id="merge-target-select" class="block w-full rounded-md border-gray-300 shadow-sm p-1.5 text-sm">
+                  ${optionsHtml}
+              </select>
+          </div>
+      `;
+      genericModalConfirmBtn.textContent = '統合する';
+      genericModalConfirmBtn.className = 'btn-danger';
+      genericModalConfirmBtn.onclick = () => {
+          const targetSpeaker = document.getElementById('merge-target-select').value;
+          const targetDisplayName = characterSettings[targetSpeaker]?.displayName || targetSpeaker;
+          if (!confirm(`「${sourceDisplayName}」の発言をすべて「${targetDisplayName}」に統合しますか？\nこの操作は取り消せません。`)) return;
+          handleMergeCharacterConfirm(sourceSpeaker, targetSpeaker);
+      };
+      openModal(genericModal);
+  }
+
+  function handleMergeCharacterConfirm(sourceSpeaker, targetSpeaker) {
+      if (!characterSettings[targetSpeaker]) return;
+
+      // displayLogData の speaker を書き換え
+      displayLogData.forEach(item => {
+          if (item.type === 'message' && item.speaker === sourceSpeaker) {
+              item.speaker = targetSpeaker;
+              // 個別アイコン上書きはそのまま保持（統合先のデフォルトアイコンに任せる）
+              if (item.iconKey !== 'default') {
+                  // 統合先に同名の差分がなければ default に戻す
+                  if (!characterSettings[targetSpeaker].expressions?.[item.iconKey]) {
+                      item.iconKey = 'default';
+                  }
+              }
+              item.overrideIconSrc = null;
+          }
+      });
+
+      // speakerFrequencies をマージ
+      if (speakerFrequencies[sourceSpeaker]) {
+          speakerFrequencies[targetSpeaker] = (speakerFrequencies[targetSpeaker] || 0) + speakerFrequencies[sourceSpeaker];
+          delete speakerFrequencies[sourceSpeaker];
+      }
+
+      // アップロード済みファイルのクリーンアップ
+      const sourceKey = `newchar_${sourceSpeaker}`;
+      if (uploadedFiles[sourceKey]) delete uploadedFiles[sourceKey];
+      if (uploadedFiles[sourceSpeaker]) delete uploadedFiles[sourceSpeaker];
+      const sourceExpressions = characterSettings[sourceSpeaker]?.expressions || {};
+      Object.keys(sourceExpressions).forEach(expName => {
+          const uploadKey = `exp_${sourceSpeaker}_${expName}`;
+          if (uploadedFiles[uploadKey]) delete uploadedFiles[uploadKey];
+      });
+
+      // speakerFilenameAlias もクリーンアップ
+      if (speakerFilenameAlias[sourceSpeaker]) delete speakerFilenameAlias[sourceSpeaker];
+
+      // expressionAliasMap もクリーンアップ
+      if (expressionAliasMap[sourceSpeaker]) delete expressionAliasMap[sourceSpeaker];
+
+      // characterSettings から source を削除
+      delete characterSettings[sourceSpeaker];
+
+      closeModal(genericModal);
+      updateSpeakerDataForExport();
+      populateCharacterSettingsUI();
+      populateSpeakerFilterUI();
+      renderLog();
+
+      const targetDisplayName = characterSettings[targetSpeaker]?.displayName || targetSpeaker;
+      alert(`統合が完了しました。「${targetDisplayName}」にまとめられました。`);
   }
 
   function openAddNewCharacterModal() {
@@ -1034,7 +1129,7 @@
   }
 
   function openModal(modalElement) { modalElement.classList.remove('hidden'); }
-  function closeModal(modalElement) { modalElement.classList.add('hidden'); genericModalBody.innerHTML = ''; }
+  function closeModal(modalElement) { modalElement.classList.add('hidden'); genericModalBody.innerHTML = ''; genericModalConfirmBtn.textContent = 'OK'; genericModalConfirmBtn.className = 'btn-primary'; }
 
   function populateTabsUI() {
       logTabsNav.innerHTML = '';
