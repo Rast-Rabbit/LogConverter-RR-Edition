@@ -418,14 +418,11 @@
                   const color = colorMatch?.[1]?.trim() || '#000000';
                   tempData.push({
                       type: 'message', id: generateUniqueId('msg'),
-                      originalIndex: currentOriginalIndex, insertOrder: 0,
                       tab: tab, speaker: speaker, color: color, message: message
                   });
-                  currentOriginalIndex++;
               }
           } catch (parseError) {
-              tempData.push({ type: 'error', id: generateUniqueId('err'), originalIndex: currentOriginalIndex, insertOrder: 0, message: `ログの解析エラー`, details: p.textContent?.substring(0, 100) || '内容不明' });
-              currentOriginalIndex++;
+              tempData.push({ type: 'error', id: generateUniqueId('err'), message: `ログの解析エラー`, details: p.textContent?.substring(0, 100) || '内容不明' });
           }
       });
       return tempData;
@@ -467,13 +464,11 @@
               const color = colorMatch?.[1]?.trim() || '#000000';
               const isDiceRoll = div.classList.contains('diceroll');
               tempData.push({
-                  type: 'message', id: generateUniqueId('msg'), originalIndex: currentOriginalIndex, insertOrder: 0,
+                  type: 'message', id: generateUniqueId('msg'),
                   tab: tab, speaker: speaker, color: color, message: message, isDiceRoll: isDiceRoll
               });
-              currentOriginalIndex++;
           } catch (parseError) {
-              tempData.push({ type: 'error', id: generateUniqueId('err'), originalIndex: currentOriginalIndex, insertOrder: 0, message: `Tekeyログの解析エラー`, details: div.textContent?.substring(0, 100) || '内容不明' });
-              currentOriginalIndex++;
+              tempData.push({ type: 'error', id: generateUniqueId('err'), message: `Tekeyログの解析エラー`, details: div.textContent?.substring(0, 100) || '内容不明' });
           }
       });
       return tempData;
@@ -993,8 +988,6 @@
       const newChatItem = {
           type: 'message',
           id: generateUniqueId('newmsg'),
-          originalIndex: refItem.originalIndex,
-          insertOrder: (refItem.insertOrder || 0) + 0.001,
           tab: selectedTab,
           speaker: speakerId,
           color: characterSettings[speakerId]?.color || '#000000',
@@ -1005,13 +998,7 @@
           isNew: true
       };
 
-      let insertAtIndex = refItemIndex + 1;
-      while(insertAtIndex < displayLogData.length &&
-            displayLogData[insertAtIndex].originalIndex === newChatItem.originalIndex &&
-            (displayLogData[insertAtIndex].insertOrder || 0) < newChatItem.insertOrder) {
-          insertAtIndex++;
-      }
-      displayLogData.splice(insertAtIndex, 0, newChatItem);
+      displayLogData.splice(refItemIndex + 1, 0, newChatItem);
 
       const newElement = createMessageElement(newChatItem);
       if (newElement) {
@@ -1083,36 +1070,13 @@
       const newHeadingItem = {
           type: 'heading',
           id: generateUniqueId('head'),
-          originalIndex: refItem ? refItem.originalIndex : (displayLogData.length > 0 ? displayLogData[0].originalIndex -1 : -1),
-          insertOrder: refItem ? (refItem.insertOrder || 0) - 0.001 : -1,
           level: level,
           text: text,
           isNew: true
       };
 
-      let insertAtIndex;
-      if (refItemIndex !== -1) {
-          insertAtIndex = refItemIndex;
-          while(insertAtIndex > 0 &&
-                displayLogData[insertAtIndex - 1].originalIndex === newHeadingItem.originalIndex &&
-                (displayLogData[insertAtIndex - 1].insertOrder || 0) > newHeadingItem.insertOrder) {
-              insertAtIndex--;
-          }
-      } else {
-          insertAtIndex = 0;
-          if (displayLogData.length > 0 && newHeadingItem.originalIndex >= displayLogData[0].originalIndex) {
-             newHeadingItem.originalIndex = displayLogData[0].originalIndex;
-             newHeadingItem.insertOrder = (displayLogData[0].insertOrder || 0) - 0.001;
-             while(insertAtIndex < displayLogData.length &&
-                   displayLogData[insertAtIndex].originalIndex === newHeadingItem.originalIndex &&
-                   (displayLogData[insertAtIndex].insertOrder || 0) < newHeadingItem.insertOrder) {
-                 insertAtIndex++;
-             }
-          } else if (displayLogData.length === 0) {
-             newHeadingItem.originalIndex = 0;
-             newHeadingItem.insertOrder = 0;
-          }
-      }
+      // referenceItemId がある場合はその直前、ない場合は先頭
+      const insertAtIndex = refItemIndex !== -1 ? refItemIndex : 0;
       displayLogData.splice(insertAtIndex, 0, newHeadingItem);
 
       const newElement = createHeadingElement(newHeadingItem);
@@ -1380,12 +1344,7 @@
            return tabMatch;
        });
 
-       const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
-       const dataToSort = filteredItems.sort((a, b) => {
-           if (a.originalIndex !== b.originalIndex) return (a.originalIndex || 0) - (b.originalIndex || 0);
-           if ((a.insertOrder || 0) !== (b.insertOrder || 0)) return (a.insertOrder || 0) - (b.insertOrder || 0);
-           return (typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99);
-       });
+       const dataToSort = filteredItems; // displayLogData の配列順が表示順
 
        logDisplayDiv.innerHTML = '';
 
@@ -1656,7 +1615,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       div.id = headingItem.id;
       div.className = `heading-item level-${headingItem.level}`;
       div.dataset.itemId = headingItem.id;
-      div.dataset.originalIndexContext = headingItem.originalIndex;
+
       div.style.color = currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor;
 
       const textSpan = document.createElement('span');
@@ -1717,31 +1676,22 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
           const newImageEntry = { type: 'image', id: imageId, src: dataUrl, anchorId: anchorIdToUse, caption: caption, isNew: true };
 
-          let insertAtIndex = -1;
+          let insertAtIndex;
           if (insertType === 'header') {
-              newImageEntry.originalIndex = (displayLogData.length > 0 ? displayLogData[0].originalIndex : 0) -1;
-              newImageEntry.insertOrder = -1;
               insertAtIndex = 0;
-              while(insertAtIndex < displayLogData.length &&
-                    displayLogData[insertAtIndex].originalIndex < newImageEntry.originalIndex) {
-                  insertAtIndex++;
-              }
           } else {
               const refItemIndex = displayLogData.findIndex(item => item.id === referenceItemId);
               if (refItemIndex === -1) throw new Error("参照アイテムが見つかりません。");
-              newImageEntry.originalIndex = displayLogData[refItemIndex].originalIndex;
-              newImageEntry.insertOrder = (displayLogData[refItemIndex].insertOrder || 0) + (insertType === 'after' ? 0.0005 : -0.0005);
-
-              insertAtIndex = refItemIndex + (insertType === 'after' ? 1 : 0);
-              while(insertAtIndex < displayLogData.length &&
-                    displayLogData[insertAtIndex].originalIndex === newImageEntry.originalIndex &&
-                    (displayLogData[insertAtIndex].insertOrder || 0) < newImageEntry.insertOrder) {
-                  insertAtIndex++;
-              }
-              while(insertAtIndex > 0 && insertAtIndex <= displayLogData.length &&
-                    displayLogData[insertAtIndex - 1].originalIndex === newImageEntry.originalIndex &&
-                    (displayLogData[insertAtIndex - 1].insertOrder || 0) > newImageEntry.insertOrder) {
-                  insertAtIndex--;
+              if (insertType === 'after') {
+                  // 同メッセージに紐付く既存画像の末尾に挿入
+                  insertAtIndex = refItemIndex + 1;
+                  while (insertAtIndex < displayLogData.length &&
+                         displayLogData[insertAtIndex].type === 'image' &&
+                         displayLogData[insertAtIndex].anchorId === referenceItemId) {
+                      insertAtIndex++;
+                  }
+              } else {
+                  insertAtIndex = refItemIndex;
               }
           }
           displayLogData.splice(insertAtIndex, 0, newImageEntry);
@@ -2066,31 +2016,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
   // --- Ordering / Move ---
   function getCurrentEditorViewSortedItems() {
-      const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
-      const filteredItems = displayLogData.filter(isItemVisibleInCurrentEditorView);
-      return filteredItems.sort((a, b) => {
-          if ((a.originalIndex || 0) !== (b.originalIndex || 0)) return (a.originalIndex || 0) - (b.originalIndex || 0);
-          if ((a.insertOrder || 0) !== (b.insertOrder || 0)) return (a.insertOrder || 0) - (b.insertOrder || 0);
-          return (typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99);
-      });
-  }
-
-  function renumberOrderKeysIfNeededForSwap(a, b) {
-      const aOi = a.originalIndex || 0, bOi = b.originalIndex || 0;
-      const aIo = a.insertOrder || 0, bIo = b.insertOrder || 0;
-      if (aOi === bOi && aIo === bIo) {
-          // Rare collision: renumber all items in global display order to ensure uniqueness.
-          const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
-          const globalSorted = [...displayLogData].sort((x, y) => {
-              if ((x.originalIndex || 0) !== (y.originalIndex || 0)) return (x.originalIndex || 0) - (y.originalIndex || 0);
-              if ((x.insertOrder || 0) !== (y.insertOrder || 0)) return (x.insertOrder || 0) - (y.insertOrder || 0);
-              return (typeSortOrder[x.type] || 99) - (typeSortOrder[y.type] || 99);
-          });
-          globalSorted.forEach((it, idx) => {
-              it.originalIndex = idx;
-              it.insertOrder = 0;
-          });
-      }
+      return displayLogData.filter(isItemVisibleInCurrentEditorView);
   }
 
   function handleMoveItem(itemId, direction) {
@@ -2103,26 +2029,22 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const a = view[idx];
       const b = view[targetIdx];
 
-      renumberOrderKeysIfNeededForSwap(a, b);
+      // displayLogData 内の実インデックスを取得してswap
+      const aIdx = displayLogData.indexOf(a);
+      const bIdx = displayLogData.indexOf(b);
+      displayLogData[aIdx] = b;
+      displayLogData[bIdx] = a;
 
-      // swap sort keys
-      const tmpOi = a.originalIndex; const tmpIo = a.insertOrder;
-      a.originalIndex = b.originalIndex; a.insertOrder = b.insertOrder;
-      b.originalIndex = tmpOi; b.insertOrder = tmpIo;
-
-      // swap DOM nodes (lightweight)
+      // DOM swap
       const aEl = logDisplayDiv.querySelector(`[data-item-id="${a.id}"]`);
       const bEl = logDisplayDiv.querySelector(`[data-item-id="${b.id}"]`);
       if (aEl && bEl && aEl.parentNode === bEl.parentNode) {
           if (direction === 1) {
-              // move down: swap with next by inserting b before a
               logDisplayDiv.insertBefore(bEl, aEl);
           } else {
-              // move up: insert a before b
               logDisplayDiv.insertBefore(aEl, bEl);
           }
       } else {
-          // fallback: minimal rerender of these two items
           updateSingleItemInDomOrRemove(a);
           updateSingleItemInDomOrRemove(b);
       }
@@ -2142,8 +2064,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
   function updateHeadingsNav() {
       headingsListUl.innerHTML = '';
-      const headingsInDisplayOrder = displayLogData.filter(item => item.type === 'heading')
-                                         .sort((a,b) => (a.originalIndex - b.originalIndex) || ((a.insertOrder || 0) - (b.insertOrder || 0)));
+      const headingsInDisplayOrder = displayLogData.filter(item => item.type === 'heading');
 
       if (headingsInDisplayOrder.length === 0) {
           headingsListUl.innerHTML = '<li class="no-headings">見出しはありません</li>';
@@ -2518,6 +2439,17 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               }
               return null;
           }).filter(item => item !== null);
+
+          // 旧形式（originalIndex/insertOrder あり）の場合、1回だけソートして正規化
+          if (displayLogData.some(item => item.originalIndex !== undefined)) {
+              const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
+              displayLogData.sort((a, b) =>
+                  ((a.originalIndex || 0) - (b.originalIndex || 0)) ||
+                  ((a.insertOrder || 0) - (b.insertOrder || 0)) ||
+                  ((typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99))
+              );
+              displayLogData.forEach(item => { delete item.originalIndex; delete item.insertOrder; });
+          }
       }
        speakerFrequencies = {}; uniqueTabsFound = new Set();
        displayLogData.forEach(item => {
@@ -2728,14 +2660,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const { iconSize, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
       let logBodyContent = ''; let headingsForNavOutput = [];
 
-      const typeSortOrder = { heading: 1, message: 2, image: 3, error: 4 };
-      const sortedExportData = [...dataForExport].sort((a, b) =>
-          (a.originalIndex - b.originalIndex) ||
-          ((a.insertOrder || 0) - (b.insertOrder || 0)) ||
-          ((typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99))
-      );
-
-      sortedExportData.forEach((item, index) => {
+      dataForExport.forEach((item, index) => {
           try {
                // Note: Tab boundary separators are generated dynamically in the exported viewer (no static <hr>).
               if (item.type === 'message') {
