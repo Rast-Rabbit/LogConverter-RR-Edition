@@ -318,6 +318,30 @@ body {
     margin: 4px 0;
 }
 
+.icon-select-subsequent-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    font-size: 0.85em;
+    color: #555;
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.icon-select-subsequent-toggle:hover {
+    background-color: #f0f0f0;
+}
+
+.icon-select-subsequent-toggle input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
 .icon-select-dropdown button img {
     width: 20px;
     height: 20px;

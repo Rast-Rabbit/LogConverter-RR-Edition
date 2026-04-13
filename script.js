@@ -49,6 +49,7 @@
    let nextExpressionAliasId = 0;
    let resizePerfResetTimer = null;
    let resizePerfRafId = null;
+   let applyIconToSubsequent = false; // ページ内共通トグル：以降の全アイコンを変更するか
 
 
    // Project file constants
@@ -1838,6 +1839,15 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (sortedExpNames.length > 0) { const separator = document.createElement('div'); separator.className = 'icon-select-separator'; fragment.appendChild(separator); sortedExpNames.forEach(expName => { const btn = createDropdownButton(expName, escapeHtml(expName), speaker, 'expression'); if (expressions[expName]) btn.insertBefore(createDropdownIconPreview(expressions[expName]), btn.firstChild); fragment.appendChild(btn); }); }
       const separator2 = document.createElement('div'); separator2.className = 'icon-select-separator'; fragment.appendChild(separator2);
       const overrideBtn = createDropdownButton('override', 'ファイルから個別設定...', speaker, 'override'); fragment.appendChild(overrideBtn);
+
+      const separator3 = document.createElement('div'); separator3.className = 'icon-select-separator'; fragment.appendChild(separator3);
+      const toggleRow = document.createElement('label'); toggleRow.className = 'icon-select-subsequent-toggle';
+      const toggleCheckbox = document.createElement('input'); toggleCheckbox.type = 'checkbox'; toggleCheckbox.checked = applyIconToSubsequent;
+      toggleCheckbox.addEventListener('change', (e) => { applyIconToSubsequent = e.target.checked; e.stopPropagation(); });
+      toggleRow.appendChild(toggleCheckbox);
+      toggleRow.appendChild(document.createTextNode(' 以降の全アイコンを変更'));
+      fragment.appendChild(toggleRow);
+
       dropdown.appendChild(fragment); const rect = clickedIconElement.getBoundingClientRect();
       dropdown.style.top = `${window.scrollY + rect.bottom + 5}px`; dropdown.style.left = `${window.scrollX + rect.left}px`;
       dropdown.classList.remove('hidden'); currentDropdown = dropdown; document.addEventListener('click', handleClickOutsideDropdown, true);
@@ -1867,8 +1877,22 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
            }
            messageIconChangeTargetId = null;
            const messageElement = logDisplayDiv.querySelector(`.message-item[data-item-id="${messageId}"]`);
-           if (messageElement) {
-               updateMessageIconElement(messageElement, logItem);
+           if (messageElement) updateMessageIconElement(messageElement, logItem);
+
+           if (applyIconToSubsequent) {
+               const targetSpeaker = logItem.speaker;
+               for (let i = itemIndex + 1; i < displayLogData.length; i++) {
+                   const subsequent = displayLogData[i];
+                   if (subsequent.type !== 'message' || subsequent.speaker !== targetSpeaker) continue;
+                   subsequent.iconKey = key;
+                   if (subsequent.overrideIconSrc) {
+                       const subOverrideKey = `icon_msg_${subsequent.id}`;
+                       if (uploadedFiles[subOverrideKey]) delete uploadedFiles[subOverrideKey];
+                       subsequent.overrideIconSrc = null;
+                   }
+                   const subEl = logDisplayDiv.querySelector(`.message-item[data-item-id="${subsequent.id}"]`);
+                   if (subEl) updateMessageIconElement(subEl, subsequent);
+               }
            }
        }
   }
