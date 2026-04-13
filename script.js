@@ -634,7 +634,8 @@
 
           const mergeBtn = document.createElement('button');
           mergeBtn.textContent = '別キャラに統合…';
-          mergeBtn.className = 'text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50 self-center justify-self-start w-fit';
+          mergeBtn.className = 'text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50 self-center';
+          mergeBtn.style.cssText = 'width: fit-content; justify-self: start;';
           mergeBtn.title = 'この発言者の発言をすべて別のキャラクターに統合し、このキャラクター設定を削除します';
           mergeBtn.addEventListener('click', () => openMergeCharacterModal(speaker));
 
