@@ -36,6 +36,7 @@
    let nextUniqueId = 0;
    let logFileNameBase = 'session_log';
    let uniqueTabsFound = new Set();
+   let tabSettings = {}; // { tabName: { alignment: 'left' | 'right' } }
    let speakerDataForExport = {};
    let messageIconChangeTargetId = null;
    let currentDropdown = null;
@@ -330,10 +331,15 @@
 
        visibleTabsInAllMode = new Set([...uniqueTabsFound].filter(t => t !== 'all'));
 
+       tabSettings = {};
+       [...uniqueTabsFound].filter(t => t !== 'all').forEach(tab => {
+           tabSettings[tab] = { alignment: 'left' };
+       });
+
        displayLogData = parsedData.map(item => {
            if (item.type === 'message') {
                const initialDisplayMode = (item.speaker === 'system') ? 'narration' : 'bubble';
-               return { ...item, displayMode: initialDisplayMode, iconKey: 'default', overrideIconSrc: null, alignmentOverride: null };
+               return { ...item, displayMode: initialDisplayMode, iconKey: 'default', overrideIconSrc: null };
            }
            return item;
        });
@@ -353,6 +359,7 @@
        updateSpeakerDataForExport();
        populateCharacterSettingsUI();
        populateTabsUI();
+       populateTabSettingsUI();
        populateSpeakerFilterUI();
        updateCustomizationUI();
        renderLog();
@@ -363,7 +370,7 @@
        resetCustomizationDefaults();
        currentTabFilter = 'all'; currentSpeakerFilter = 'all'; uploadedFiles = {};
        speakerFrequencies = {}; uniqueTabsFound = new Set(['all']); visibleTabsInAllMode = new Set();
-       nextUniqueId = 0; imageInsertTarget = { type: null, itemId: null}; actionTargetItemId = null; speakerDataForExport = {};
+       nextUniqueId = 0; imageInsertTarget = { type: null, itemId: null}; actionTargetItemId = null; speakerDataForExport = {}; tabSettings = {};
        messageIconChangeTargetId = null; expressionAddContext = { speaker: null, inputElement: null };
        logFileNameBase = 'session_log'; exportHtmlTitleInput.value = logFileNameBase; exportZipFilenameInput.value = logFileNameBase;
        projectLoadInfoSpan.textContent = ''; fileInfoSpan.textContent = 'ファイルが選択されていません';
@@ -507,7 +514,6 @@
         if (original !== 'system') {
             speakerDataForExport[original] = {
                 displayName: setting.displayName,
-                alignment: setting.alignment || 'left',
                 color: setting.color || '#000000',
                 customTextColor: setting.customTextColor,
                 forceNarration: setting.forceNarration || false
@@ -558,20 +564,6 @@
 
           const controlsGrid = document.createElement('div');
           controlsGrid.className = 'grid grid-cols-2 gap-x-4 gap-y-2';
-
-          const alignmentDiv = document.createElement('div'); alignmentDiv.className = 'flex items-center space-x-2';
-          const alignmentLabel = document.createElement('span'); alignmentLabel.className = 'text-sm font-medium text-gray-700'; alignmentLabel.textContent = '向き:';
-          const alignmentSelect = document.createElement('select'); alignmentSelect.id = `alignment-select-${uniqueSpeakerIdSuffix}`;
-          alignmentSelect.className = 'text-sm p-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
-          ['left', 'right'].forEach(align => {
-              const option = document.createElement('option');
-              option.value = align;
-              option.textContent = align === 'left' ? '左 (デフォルト)' : '右';
-              if (setting.alignment === align) option.selected = true;
-              alignmentSelect.appendChild(option);
-          });
-          alignmentSelect.addEventListener('change', (e) => { if(characterSettings[speaker]) { characterSettings[speaker].alignment = e.target.value; updateSpeakerDataForExport(); renderLog(); }});
-          alignmentDiv.appendChild(alignmentLabel); alignmentDiv.appendChild(alignmentSelect);
 
           const charColorDiv = document.createElement('div'); charColorDiv.className = 'flex items-center space-x-2';
           const charColorLabel = document.createElement('span'); charColorLabel.className = 'text-sm font-medium text-gray-700'; charColorLabel.textContent = 'テーマ色:';
@@ -640,7 +632,6 @@
           forceNarrationDiv.appendChild(switchLabel);
 
 
-          controlsGrid.appendChild(alignmentDiv);
           controlsGrid.appendChild(charColorDiv);
           controlsGrid.appendChild(charTextColorDiv);
           controlsGrid.appendChild(forceNarrationDiv);
@@ -696,7 +687,7 @@
       const uniqueSpeakerIdSuffix = generateSafeIdSuffix(speaker); const imgPreview = document.getElementById(`icon-preview-${uniqueSpeakerIdSuffix}`);
       try {
           const dataUrl = await readFileAsDataURL(file); if (imgPreview) imgPreview.src = dataUrl;
-          if (!characterSettings[speaker]) characterSettings[speaker] = { displayName: speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false, isNew: true };
+          if (!characterSettings[speaker]) characterSettings[speaker] = { displayName: speaker, icon: null, expressions: {}, color: '#000000', customTextColor: null, forceNarration: false, isNew: true };
           characterSettings[speaker].icon = dataUrl;
           const uploadKey = characterSettings[speaker].isNew ? `newchar_${speaker}` : speaker;
           uploadedFiles[uploadKey] = file;
@@ -774,13 +765,6 @@
               <span id="new-char-icon-filename" class="text-xs ml-2"></span>
           </div>
           <div class="modal-form-group">
-              <label for="new-char-alignment">向き:</label>
-              <select id="new-char-alignment">
-                  <option value="left" selected>左 (デフォルト)</option>
-                  <option value="right">右</option>
-              </select>
-          </div>
-          <div class="modal-form-group">
               <label for="new-char-theme-color">キャラクターテーマカラー:</label>
               <input type="color" id="new-char-theme-color" value="#000000">
           </div>
@@ -816,7 +800,6 @@
   async function handleAddNewCharacterConfirm() {
       const internalName = document.getElementById('new-char-name').value.trim();
       const displayName = document.getElementById('new-char-display-name').value.trim();
-      const alignment = document.getElementById('new-char-alignment').value;
       const themeColor = document.getElementById('new-char-theme-color').value;
       const textColorInput = document.getElementById('new-char-text-color');
       const forceNarration = document.getElementById('new-char-force-narration').checked;
@@ -842,7 +825,6 @@
           displayName: displayName,
           icon: iconDataUrl,
           expressions: {},
-          alignment: alignment,
           color: themeColor,
           customTextColor: customTextColor,
           forceNarration: forceNarration,
@@ -925,7 +907,6 @@
           displayMode: 'bubble',
           iconKey: 'default',
           overrideIconSrc: null,
-          alignmentOverride: null,
           isNew: true
       };
 
@@ -1150,6 +1131,56 @@
     allModeTabFilterDiv.classList.remove('hidden');
   }
 
+  function populateTabSettingsUI() {
+      const tabSettingsDiv = document.getElementById('tab-settings-ui');
+      if (!tabSettingsDiv) return;
+      tabSettingsDiv.innerHTML = '';
+
+      const tabs = [...uniqueTabsFound].filter(t => t !== 'all').sort((a, b) => a.localeCompare(b));
+      if (tabs.length === 0) {
+          tabSettingsDiv.innerHTML = '<p class="text-gray-500 italic text-sm">タブ情報がありません。</p>';
+          return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      tabs.forEach(tab => {
+          if (!tabSettings[tab]) tabSettings[tab] = { alignment: 'left' };
+
+          const row = document.createElement('div');
+          row.className = 'flex items-center space-x-3 py-2 border-b border-gray-200 last:border-0';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'text-sm font-medium text-gray-700 flex-shrink-0 w-28 truncate';
+          nameSpan.textContent = tab;
+          nameSpan.title = tab;
+
+          const label = document.createElement('span');
+          label.className = 'text-sm text-gray-600 flex-shrink-0';
+          label.textContent = '表示方向:';
+
+          const select = document.createElement('select');
+          select.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+          [['left', '左'], ['right', '右']].forEach(([val, text]) => {
+              const option = document.createElement('option');
+              option.value = val;
+              option.textContent = text;
+              if ((tabSettings[tab].alignment || 'left') === val) option.selected = true;
+              select.appendChild(option);
+          });
+          select.addEventListener('change', (e) => {
+              if (!tabSettings[tab]) tabSettings[tab] = {};
+              tabSettings[tab].alignment = e.target.value;
+              renderLog();
+          });
+
+          row.appendChild(nameSpan);
+          row.appendChild(label);
+          row.appendChild(select);
+          fragment.appendChild(row);
+      });
+      tabSettingsDiv.appendChild(fragment);
+  }
+
   function populateSpeakerFilterUI() {
       speakerFilterSelect.innerHTML = '<option value="all">すべての発言者</option>';
       const allKnownSpeakers = new Set([...Object.keys(speakerFrequencies).filter(s => s !== 'system'), ...Object.keys(characterSettings).filter(s => s !== 'system' && characterSettings[s].isNew)]);
@@ -1311,7 +1342,7 @@
       const setting = characterSettings[logItem.speaker] || { displayName: logItem.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
       const isForcedNarration = setting.forceNarration || false;
       const currentDisplayMode = isForcedNarration ? 'narration' : (logItem.displayMode || 'bubble');
-      const finalAlignment = logItem.alignmentOverride || setting.alignment || 'left';
+      const finalAlignment = tabSettings[logItem.tab]?.alignment || 'left';
       const messageTextColor = setting.customTextColor ||
         (currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor);
 
@@ -1350,8 +1381,6 @@
       const speakerNameSpan = messageElement.querySelector('.speaker-name-default');
       const messageBody = messageElement.querySelector('.message-body');
       const toggleButton = messageElement.querySelector('.display-mode-toggle');
-      const toggleAlignBtn = messageElement.querySelector('.advanced-action-buttons [data-action="toggle-alignment"]');
-
       messageElement.dataset.displayMode = state.currentDisplayMode;
       if (messageContainer) messageContainer.classList.toggle('align-right', effectiveBubbleAlignment === 'right');
 
@@ -1383,9 +1412,6 @@
           }
       }
 
-      if (toggleAlignBtn) {
-          toggleAlignBtn.textContent = state.finalAlignment === 'left' ? '右向きに' : '左向きに';
-      }
   }
 
   function createMessageElement(logItem) {
@@ -1457,11 +1483,8 @@
     if (insertImgBtn) actionButtonContainer.appendChild(insertImgBtn);
     if (deleteBtnBubble) actionButtonContainer.appendChild(deleteBtnBubble);
 if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
-      const toggleAlignBtn = createActionButton(state.finalAlignment === 'left' ? '右向きに' : '左向きに', 'action-button-custom', () => toggleMessageAlignment(logItem.id));
-      toggleAlignBtn.dataset.action = 'toggle-alignment';
       const addChatBtn = createActionButton('発言追加', 'action-button-custom', () => openAddChatItemModal(logItem.id));
       const addHeadingBtn = createActionButton('見出し追加', 'action-button-custom', () => openAddHeadingModal(logItem.id));
-      if (toggleAlignBtn) advancedActionButtonContainer.appendChild(toggleAlignBtn);
       if (addChatBtn) advancedActionButtonContainer.appendChild(addChatBtn);
       if (addHeadingBtn) advancedActionButtonContainer.appendChild(addHeadingBtn);
 
@@ -1497,21 +1520,6 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const elementToUpdate = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
       if (elementToUpdate) {
           updateMessageElementPresentation(elementToUpdate, displayLogData[itemIndex]);
-      }
-  }
-  function toggleMessageAlignment(itemId) {
-      const itemIndex = displayLogData.findIndex(item => item.id === itemId && item.type === 'message');
-      if (itemIndex === -1) return;
-
-      const logItem = displayLogData[itemIndex];
-      const charSetting = characterSettings[logItem.speaker] || {};
-      const currentEffectiveAlignment = logItem.alignmentOverride || charSetting.alignment || 'left';
-      const newAlignment = currentEffectiveAlignment === 'left' ? 'right' : 'left';
-      logItem.alignmentOverride = newAlignment;
-
-      const messageElement = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
-      if (messageElement) {
-          updateMessageElementPresentation(messageElement, logItem);
       }
   }
   function createInsertedImageElement(imageItem) {
@@ -2187,6 +2195,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               fileFormatVersion: PROJECT_FILE_FORMAT_VERSION, toolVersion: APP_VERSION, createdAt: new Date().toISOString(),
               logFileNameBase: logFileNameBase, characterSettings: {},
               customizationSettings: { ...customizationSettings },
+              tabSettings: { ...tabSettings },
               displayLogData: [], uploadedFileManifest: {}, nextUniqueId: nextUniqueId,
               currentFilters: { tab: currentTabFilter, speaker: currentSpeakerFilter }
           };
@@ -2402,7 +2411,29 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
        visibleTabsInAllMode = new Set([...uniqueTabsFound].filter(t => t !== 'all'));
 
-      updateSpeakerDataForExport(); populateCharacterSettingsUI(); updateCustomizationUI(); populateTabsUI(); populateSpeakerFilterUI(); renderLog();
+       if (projectData.tabSettings) {
+           // 新形式: tabSettingsをそのまま読み込み
+           tabSettings = {};
+           [...uniqueTabsFound].filter(t => t !== 'all').forEach(tab => {
+               tabSettings[tab] = { alignment: (projectData.tabSettings[tab]?.alignment || 'left') };
+           });
+       } else {
+           // 旧形式: 各タブの最初のメッセージのalignmentから推定してコンバート
+           tabSettings = {};
+           [...uniqueTabsFound].filter(t => t !== 'all').forEach(tab => {
+               const firstMsg = displayLogData.find(item => item.type === 'message' && item.tab === tab);
+               let alignment = 'left';
+               if (firstMsg) {
+                   const charSetting = characterSettings[firstMsg.speaker] || {};
+                   alignment = firstMsg.alignmentOverride || charSetting.alignment || 'left';
+               }
+               tabSettings[tab] = { alignment };
+           });
+       }
+       // alignmentOverrideは不要になったので削除
+       displayLogData.forEach(item => { if (item.type === 'message') delete item.alignmentOverride; });
+
+      updateSpeakerDataForExport(); populateCharacterSettingsUI(); updateCustomizationUI(); populateTabsUI(); populateTabSettingsUI(); populateSpeakerFilterUI(); renderLog();
   }
 
   async function handleExportZip() {
@@ -2417,7 +2448,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           const rawCss = generateOutputCss(customizationSettings);
           const minifiedCss = generateMinifiedCss(rawCss);
           zip.file("style.css", minifiedCss);
-          const outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "");
+          const outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, "", tabSettings);
           zip.file("log_export.html", outputHtml);
           const imgFolder = zip.folder("images"); if (!imgFolder) throw new Error("Failed to create 'images' folder.");
           const addedFiles = new Set();
@@ -2491,7 +2522,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               sourceToAssetId: new Map(),
               assetPayload: {}
           };
-          let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, singleFileExportOptions);
+          let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, singleFileExportOptions, tabSettings);
 
           for (const [imagePath, dataUrl] of imageDataUrlMap.entries()) {
               outputHtml = outputHtml.split(imagePath).join(dataUrl);
@@ -2574,7 +2605,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       });
   }
 
-  function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, outputOptionsRaw) {
+  function generateOutputHtml(dataForExport, uniqueTabs, speakerData, htmlTitle, currentCustomization, outputOptionsRaw, tabSettingsData) {
       const outputOptions = (outputOptionsRaw && typeof outputOptionsRaw === 'object') ? outputOptionsRaw : {};
       const { iconSize, fontFamily, normalBubbleColor, baseTextColor, rightBubbleColor, textEdgeColor, backgroundImageFileName } = currentCustomization;
       let logBodyContent = ''; let headingsForNavOutput = [];
@@ -2592,7 +2623,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               if (item.type === 'message') {
                   const charSettingFull = characterSettings[item.speaker] || { displayName: item.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
                   const speakerName = charSettingFull.displayName; const originalSpeaker = item.speaker;
-                  const finalAlignment = item.alignmentOverride || charSettingFull.alignment || 'left';
+                  const finalAlignment = (tabSettingsData && tabSettingsData[item.tab])?.alignment || 'left';
                   const finalDisplayMode = (speakerData[originalSpeaker] && speakerData[originalSpeaker].forceNarration) ? 'narration' : (item.displayMode || 'bubble');
 
                   const messageTextColor = charSettingFull.customTextColor || baseTextColor;
