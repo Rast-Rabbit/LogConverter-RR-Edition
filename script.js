@@ -404,7 +404,6 @@
       const parser = new DOMParser(); const doc = parser.parseFromString(htmlContent, 'text/html');
       if (!doc || !doc.body) throw new Error("ココフォリアHTMLコンテンツの解析に失敗しました。");
       const paragraphs = doc.body.querySelectorAll('p'); const tempData = [];
-      let currentOriginalIndex = 0;
       paragraphs.forEach((p) => {
           if (!p.textContent?.trim()) return;
           try {
@@ -440,7 +439,6 @@
           tabNameMap['tab1'] = 'main';
       }
       const messageDivs = chatlogDiv.querySelectorAll(':scope > div'); const tempData = [];
-      let currentOriginalIndex = 0;
       messageDivs.forEach((div) => {
           if (!div.textContent?.trim()) return;
           try {
@@ -998,7 +996,14 @@
           isNew: true
       };
 
-      displayLogData.splice(refItemIndex + 1, 0, newChatItem);
+      // 参照メッセージに紐付く画像の末尾に挿入
+      let chatInsertAtIndex = refItemIndex + 1;
+      while (chatInsertAtIndex < displayLogData.length &&
+             displayLogData[chatInsertAtIndex].type === 'image' &&
+             displayLogData[chatInsertAtIndex].anchorId === referenceItemId) {
+          chatInsertAtIndex++;
+      }
+      displayLogData.splice(chatInsertAtIndex, 0, newChatItem);
 
       const newElement = createMessageElement(newChatItem);
       if (newElement) {
