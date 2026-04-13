@@ -223,11 +223,11 @@
       isProcessingFile = true;
       fileInfoSpan.textContent = `読込中 (${logTypeLabel}): ${escapeHtml(file.name)}...`;
       projectLoadInfoSpan.textContent = '';
+      showLoading();
+      resetAppState();
       logFileNameBase = generateBaseFilename(file.name);
       exportHtmlTitleInput.value = logFileNameBase;
       exportZipFilenameInput.value = logFileNameBase;
-      showLoading();
-      resetAppState();
       return true;
   }
 
@@ -2583,7 +2583,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const sortedExportData = [...dataForExport].sort((a, b) =>
           (a.originalIndex - b.originalIndex) ||
           ((a.insertOrder || 0) - (b.insertOrder || 0)) ||
-          (typeSortOrder[a.type] - b.type)
+          ((typeSortOrder[a.type] || 99) - (typeSortOrder[b.type] || 99))
       );
 
       sortedExportData.forEach((item, index) => {
