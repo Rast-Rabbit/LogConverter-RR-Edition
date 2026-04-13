@@ -632,9 +632,16 @@
           forceNarrationDiv.appendChild(switchLabel);
 
 
+          const mergeBtn = document.createElement('button');
+          mergeBtn.textContent = '別キャラに統合…';
+          mergeBtn.className = 'text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50 self-center';
+          mergeBtn.title = 'この発言者の発言をすべて別のキャラクターに統合し、このキャラクター設定を削除します';
+          mergeBtn.addEventListener('click', () => openMergeCharacterModal(speaker));
+
           controlsGrid.appendChild(charColorDiv);
           controlsGrid.appendChild(charTextColorDiv);
           controlsGrid.appendChild(forceNarrationDiv);
+          controlsGrid.appendChild(mergeBtn);
 
           nameAndControlsDiv.appendChild(nameLabel); nameAndControlsDiv.appendChild(nameInput); nameAndControlsDiv.appendChild(controlsGrid);
 
@@ -654,13 +661,6 @@
           addForm.appendChild(expressionNameInput); addForm.appendChild(expressionFileLabel); addForm.appendChild(expressionFileInput);
           expressionSection.appendChild(addForm);
           container.appendChild(expressionSection);
-
-          const mergeBtn = document.createElement('button');
-          mergeBtn.textContent = '別キャラクターに統合…';
-          mergeBtn.className = 'mt-2 text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50';
-          mergeBtn.title = 'この発言者の発言をすべて別のキャラクターに統合し、このキャラクター設定を削除します';
-          mergeBtn.addEventListener('click', () => openMergeCharacterModal(speaker));
-          container.appendChild(mergeBtn);
 
           fragment.appendChild(container);
       });
@@ -782,7 +782,6 @@
       genericModalConfirmBtn.onclick = () => {
           const targetSpeaker = document.getElementById('merge-target-select').value;
           const targetDisplayName = characterSettings[targetSpeaker]?.displayName || targetSpeaker;
-          if (!confirm(`「${sourceDisplayName}」の発言をすべて「${targetDisplayName}」に統合しますか？\nこの操作は取り消せません。`)) return;
           handleMergeCharacterConfirm(sourceSpeaker, targetSpeaker);
       };
       openModal(genericModal);
