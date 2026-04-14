@@ -2720,7 +2720,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 <div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
   <div class="message-container export ${finalAlignment === 'right' ? 'align-right' : ''}">
       <div class="icon-container export" style="width:${iconSize}px; height:${iconSize}px;">
-          <img ${iconImageAttributes} alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+          <img ${iconImageAttributes} alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
           <span class="icon-placeholder export" style="display: ${placeholderDisplay}; border-color: ${iconBorderColor}; line-height: ${Math.round(iconSize*0.9)}px; font-size: ${Math.round(iconSize*0.5)}px;">${placeholderChar}</span>
       </div>
       <div class="content-container export">
@@ -2744,7 +2744,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                    const insertedImageAttributes = imageRelativePath ? buildSingleFileImageAttributes(imageRelativePath, outputOptions) : 'src=""';
                    logBodyContent += `
 <div class="inserted-image-container export log-item" data-tab="${escapeHtml(dataTab)}" data-speaker="${escapeHtml(dataSpeaker)}">
-  <img ${insertedImageAttributes} alt="${imageAlt}" class="inserted-image export" loading="lazy" ${imageRelativePath ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
+  <img ${insertedImageAttributes} alt="${imageAlt}" class="inserted-image export" ${imageRelativePath ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
   ${!imageRelativePath ? `<p class="image-error-placeholder export">[画像 ${escapeHtml(imageId)} ファイル不明]</p>` : ''}`;
                    if (item.caption) { logBodyContent += `\n    <p class="image-caption export">${escapeHtml(item.caption)}</p>`; } logBodyContent += `\n</div>\n`;
               } else if (item.type === 'heading') {
@@ -3036,7 +3036,6 @@ function initializeExportHeadingsNav() {
         toggleBtn.click();
     } else {
         isNavOpen = false; navContainer.classList.remove('open');
-        navContainer.style.left = '';
         if (bodyEl) bodyEl.style.marginLeft = '0';
         toggleBtn.textContent = '見';
     }
@@ -3208,8 +3207,8 @@ color: var(--base-text-color);
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: -200px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
-.export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.export-headings-nav { position: fixed; left: 0; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transform: translateX(-200px); transition: transform 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.export-headings-nav.open { transform: translateX(0) !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
 .export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
 .export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
 .export-headings-nav .nav-content { padding: 5px; max-height: calc(100vh - 40px); overflow-y: auto; }
@@ -3241,8 +3240,8 @@ color: var(--base-text-color);
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-headings-nav { width: 180px; left: -180px; }
-    .export-headings-nav.open { left: 0px !important; }
+    .export-headings-nav { width: 180px; transform: translateX(-180px); }
+    .export-headings-nav.open { transform: translateX(0) !important; }
     .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
 }
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
