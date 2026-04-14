@@ -3109,7 +3109,7 @@ color: var(--base-text-color);
 .log-item { margin-bottom: 16px; }
 .message-item.export { position: relative; }
 .message-container.export { display: flex; align-items: flex-start; }
-.narration-container.export { padding: 2px 4px; line-height: inherit; }
+.narration-container.export { padding: 2px 4px; line-height: inherit; overflow-wrap: anywhere; word-break: normal; }
 
 .message-container.export.align-right { flex-direction: row-reverse; }
 .message-container.export.align-right .icon-container.export { margin-left: 12px; margin-right: 0; }
@@ -3151,7 +3151,7 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
 .original-tab.export { font-weight: normal; font-size: 0.88em; color: #555; margin-left: 6px; text-shadow: -1px -1px 0 var(--text-edge-color), 1px -1px 0 var(--text-edge-color), -1px 1px 0 var(--text-edge-color), 1px 1px 0 var(--text-edge-color); }
 .bubble.export {
     position: relative; padding: 10px 15px; border-radius: 16px;
-    word-wrap: break-word; word-break: break-word;
+    overflow-wrap: anywhere; word-break: normal;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     background-color: var(--bubble-bg-color);
     max-width: var(--bubble-max-width);
