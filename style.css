@@ -107,8 +107,8 @@ body {
     padding: 10px 15px;
     border-radius: 15px;
     max-width: var(--bubble-max-width, 80%);
-    overflow-wrap: anywhere;
-    word-break: normal;
+    word-wrap: break-word;
+    word-break: break-word;
     /* For CJK */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     background-color: var(--bubble-bg-color, #ffffff);
@@ -243,8 +243,6 @@ body {
     border-left: 3px solid rgba(99, 102, 241, 0.45);
     background: rgba(99, 102, 241, 0.05);
     box-shadow: none;
-    overflow-wrap: anywhere;
-    word-break: normal;
 }
 
 .message-item[data-display-mode="narration"] .message-body::before {
