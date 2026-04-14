@@ -2572,22 +2572,27 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           }
           await Promise.all(conversions);
 
+          // CSSクラス方式: 画像ごとに .rr_asset_N { background-image: url(...) } を生成
+          const assetCssRules = [];
+          const assetClassMap = new Map(); // source(path or dataUrl) → className
+
           const singleFileExportOptions = {
               imageDataUrlMap,
-              sourceToAssetId: new Map(),
-              assetPayload: {}
+              assetClassMap,
+              assetCssRules,
           };
           let outputHtml = generateOutputHtml(itemsToExport, uniqueTabsFound, speakerDataForExport, htmlTitle, customizationSettings, singleFileExportOptions, tabSettings);
 
+          // CSS内の画像パスをdata URLで置換（background-image等）
           for (const [imagePath, dataUrl] of imageDataUrlMap.entries()) {
-              outputHtml = outputHtml.split(imagePath).join(dataUrl);
               minifiedCss = minifiedCss.split(imagePath).join(dataUrl);
           }
 
-          outputHtml = outputHtml.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i, `<style>${minifiedCss}</style>`);
-          if (!outputHtml.includes(`<style>${minifiedCss}</style>`)) {
-              outputHtml = outputHtml.replace(/<\/head>/i, `<style>${minifiedCss}</style>
-</head>`);
+          // スタイルタグ: 通常CSS + アセットCSSクラスを結合して埋め込む
+          const assetCss = assetCssRules.join('');
+          outputHtml = outputHtml.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i, `<style>${minifiedCss}${assetCss}</style>`);
+          if (!outputHtml.includes('<style>')) {
+              outputHtml = outputHtml.replace(/<\/head>/i, `<style>${minifiedCss}${assetCss}</style>\n</head>`);
           }
 
           const blob = new Blob([outputHtml], { type: 'text/html;charset=utf-8' });
@@ -2699,10 +2704,37 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
                   const charThemeColor = charSettingFull.color || item.color || '#000000';
                   const iconBorderColor = charThemeColor;
-                  const placeholderDisplay = !iconRelativePath ? 'inline-block' : 'none';
-                  const imageDisplay = iconRelativePath ? 'block' : 'none';
                   const placeholderChar = escapeHtml(speakerName).charAt(0) || '?';
-                  const iconImageAttributes = iconRelativePath ? buildSingleFileImageAttributes(iconRelativePath, outputOptions) : 'src=""';
+
+                  // アイコンHTML生成: 単体HTML→CSSクラスDIV方式、ZIP→IMGタグ方式
+                  let iconElHtml;
+                  let placeholderDisplay = !iconRelativePath ? 'inline-block' : 'none';
+                  if (outputOptions.assetClassMap) {
+                      // 単体HTML出力モード: CSS background-imageクラスを使用
+                      const getOrCreateClass = (source) => {
+                          if (!source) return null;
+                          if (outputOptions.assetClassMap.has(source)) return outputOptions.assetClassMap.get(source);
+                          const dataUrl = source.startsWith('data:') ? source : (outputOptions.imageDataUrlMap?.get(source) || null);
+                          if (!dataUrl) return null;
+                          const cls = `rr_asset_${outputOptions.assetClassMap.size}`;
+                          outputOptions.assetClassMap.set(source, cls);
+                          outputOptions.assetCssRules.push(`.${cls}{background-image:url(${dataUrl})}`);
+                          return cls;
+                      };
+                      const assetClass = iconRelativePath ? getOrCreateClass(iconRelativePath) : null;
+                      if (assetClass) {
+                          iconElHtml = `<div class="icon export ${assetClass}" aria-label="${escapeHtml(speakerName)}" style="border-color: ${iconBorderColor};"></div>`;
+                          placeholderDisplay = 'none';
+                      } else {
+                          iconElHtml = '';
+                          placeholderDisplay = 'inline-block';
+                      }
+                  } else {
+                      // ZIP出力モード: imgタグ
+                      const imageDisplay = iconRelativePath ? 'block' : 'none';
+                      const iconSrc = iconRelativePath ? escapeHtml(iconRelativePath) : '';
+                      iconElHtml = `<img src="${iconSrc}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
+                  }
 
                   const bubbleBgStyle = finalAlignment === 'right' ?
                                          `--bubble-bg-color: ${rightBubbleColor}; --bubble-arrow-color: ${rightBubbleColor};` :
@@ -2720,7 +2752,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 <div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
   <div class="message-container export ${finalAlignment === 'right' ? 'align-right' : ''}">
       <div class="icon-container export" style="width:${iconSize}px; height:${iconSize}px;">
-          <img ${iconImageAttributes} alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+          ${iconElHtml}
           <span class="icon-placeholder export" style="display: ${placeholderDisplay}; border-color: ${iconBorderColor}; line-height: ${Math.round(iconSize*0.9)}px; font-size: ${Math.round(iconSize*0.5)}px;">${placeholderChar}</span>
       </div>
       <div class="content-container export">
@@ -2741,10 +2773,21 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                        const imgDataFromFullLog = displayLogData.find(d => d.id === imageId); imageRelativePath = imgDataFromFullLog?.src || '';
                    }
                    const imageAlt = item.caption ? escapeHtml(item.caption) : `挿入画像 ${imageId}`;
-                   const insertedImageAttributes = imageRelativePath ? buildSingleFileImageAttributes(imageRelativePath, outputOptions) : 'src=""';
+                   // 挿入画像: 単体HTML→data URL直接埋め込み、ZIP→相対パス
+                   let insertedSrc = '';
+                   if (imageRelativePath) {
+                       if (outputOptions.imageDataUrlMap) {
+                           // 単体HTML: data URLを直接埋め込む
+                           insertedSrc = outputOptions.imageDataUrlMap.get(imageRelativePath)
+                               || (imageRelativePath.startsWith('data:') ? imageRelativePath : '');
+                       } else {
+                           // ZIP: 相対パスをそのまま（テンプレート側でescapeHtml）
+                           insertedSrc = imageRelativePath;
+                       }
+                   }
                    logBodyContent += `
 <div class="inserted-image-container export log-item" data-tab="${escapeHtml(dataTab)}" data-speaker="${escapeHtml(dataSpeaker)}">
-  <img ${insertedImageAttributes} alt="${imageAlt}" class="inserted-image export" ${imageRelativePath ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
+  <img src="${insertedSrc ? escapeHtml(insertedSrc) : ''}" alt="${imageAlt}" class="inserted-image export" ${insertedSrc ? '' : 'style="display:none;"'} onerror="this.style.display='none'; const p=document.createElement('p'); p.className='image-error-placeholder export'; p.textContent='[画像 ${escapeHtml(imageId)} 読込失敗]'; this.parentNode.appendChild(p);">
   ${!imageRelativePath ? `<p class="image-error-placeholder export">[画像 ${escapeHtml(imageId)} ファイル不明]</p>` : ''}`;
                    if (item.caption) { logBodyContent += `\n    <p class="image-caption export">${escapeHtml(item.caption)}</p>`; } logBodyContent += `\n</div>\n`;
               } else if (item.type === 'heading') {
@@ -2753,9 +2796,20 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               } else if (item.type === 'error') { logBodyContent += `\n<div class="error-message export log-item" data-tab="all" data-speaker="all"><strong>解析エラー:</strong> ${escapeHtml(item.message)}<br><small>詳細: ${escapeHtml(item.details)}...</small></div>\n`; }
           } catch (htmlGenError) { console.error(`Error generating HTML for item ID ${item.id}:`, htmlGenError); logBodyContent += `<div class="export-error">アイテム(ID: ${item.id})のHTML生成エラー</div>\n`; }
       });
-      const headingsNavHtml = headingsForNavOutput.length > 0 ? `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5><ul id="export-headings-list"></ul></div></div>` : "";
+      let headingsNavHtml = '';
+      if (headingsForNavOutput.length > 0) {
+          const navLinks = headingsForNavOutput.map(h =>
+              `    <a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
+          ).join('\n');
+          headingsNavHtml = `<details class="export-headings-nav">
+  <summary>見出し</summary>
+  <nav class="nav-content">
+${navLinks}
+  </nav>
+</details>`;
+      }
       const safeHtmlTitle = escapeHtml(htmlTitle); const fontBodyClass = fontFamily || 'font-noto-sans';
-      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, headingsForNavOutput, baseTextColor, textEdgeColor, customizationSettings, outputOptions.assetPayload || null);
+      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customizationSettings);
 
       const bodyClasses = [fontBodyClass, 'export-body', 'rr-site-light'];
       if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
@@ -2766,12 +2820,10 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${safeHtmlTitle}</title><link rel="stylesheet" href="style.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet"></head>
 <body class="${bodyClasses.join(' ')}">${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1><div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
   }
-  function generateEmbeddedJsForExport(speakerDataForExport, headingsData, baseTextColor, textEdgeColor, customSettings, singleFileAssetPayload) {
+  function generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customSettings) {
        const speakerMapString = JSON.stringify(speakerDataForExport || {});
-       const headingsDataString = JSON.stringify(headingsData || []);
        const baseTextColorString = JSON.stringify(baseTextColor || '#333333');
        const textEdgeColorString = JSON.stringify(textEdgeColor || '#ffffff');
-       const singleFileAssetString = JSON.stringify(singleFileAssetPayload || {});
        const s = customSettings || {};
 
        return `
@@ -2781,25 +2833,10 @@ if (window.self !== window.top) { document.body.classList.add('rr-in-iframe'); }
 let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsInAllModeExport = new Set();
 let lazyRevealObserver = null;
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
-const headingsForExport = ${headingsDataString};
-let singleFileAssets = ${singleFileAssetString};
 const exportLogTabsNav = document.getElementById('export-log-tabs'); const exportSpeakerFilter = document.getElementById('export-speaker-filter');
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
 const allLogItems = exportLogDisplay ? Array.from(exportLogDisplay.querySelectorAll('.log-item')) : [];
 if (!exportLogDisplay) { console.error("Export log display not found."); return; }
-
-function hydrateSingleFileAssets() {
-    if (!singleFileAssets || Object.keys(singleFileAssets).length === 0) return;
-    document.querySelectorAll('img[data-asset-id]').forEach(function(img) {
-        const assetId = img.getAttribute('data-asset-id');
-        const assetSrc = singleFileAssets[assetId];
-        if (assetSrc) img.src = assetSrc;
-        img.removeAttribute('data-asset-id');
-    });
-    singleFileAssets = null;
-}
-
-hydrateSingleFileAssets();
 
 document.documentElement.style.setProperty('--text-edge-color', exportTextEdgeColor);
 
@@ -2958,7 +2995,7 @@ function updateExportTabSeparators() {
 function applyLazyReveal() {
     exportLogDisplay.querySelectorAll('.lazy-hidden').forEach(function(el) { el.classList.remove('lazy-hidden'); });
     var visibleItems = Array.from(exportLogDisplay.querySelectorAll('.log-item'))
-        .filter(function(el) { return !el.classList.contains('hidden-log-item'); });
+        .filter(function(el) { return !el.classList.contains('hidden-log-item') && !el.classList.contains('heading-item'); });
     visibleItems.slice(80).forEach(function(el) {
         el.classList.add('lazy-hidden');
         var prev = el.previousElementSibling;
@@ -2975,72 +3012,8 @@ function lazyRevealMore() {
     });
 }
 ;
-function initializeExportHeadingsNav() {
-    const navContainer = document.getElementById('export-headings-nav-container');
-    const listUl = document.getElementById('export-headings-list');
-    const toggleBtn = document.getElementById('export-toggle-headings-nav');
-    const bodyEl = document.querySelector('body.export-body');
-    if (!navContainer || !listUl || !toggleBtn || !bodyEl) return;
-    if (headingsForExport.length === 0) { listUl.innerHTML = '<li>見出しなし</li>'; navContainer.style.display = 'none'; return; }
-
-    let isNavOpen = false;
-    headingsForExport.forEach(h => {
-        const li = document.createElement('li'); li.className = 'level-' + h.level;
-        const a = document.createElement('a'); a.href = '#' + h.id; a.textContent = h.text;
-        a.onclick = (e) => {
-            e.preventDefault();
-            const targetEl = document.getElementById(h.id);
-            if (!targetEl) return;
-            if (targetEl.classList.contains('hidden-log-item')) {
-                if (exportSpeakerFilter && currentExportSpeaker !== 'all') {
-                    currentExportSpeaker = 'all';
-                    exportSpeakerFilter.value = 'all';
-                }
-                applyExportFilters();
-            }
-            if (targetEl.classList.contains('lazy-hidden')) {
-                const allHidden = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
-                const idx = allHidden.indexOf(targetEl);
-                allHidden.slice(0, idx + 1).forEach(function(el) {
-                    const prev = el.previousElementSibling;
-                    if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
-                    el.classList.remove('lazy-hidden');
-                });
-                setTimeout(function() { targetEl.scrollIntoView({behavior:'smooth', block: 'start'}); }, 100);
-            } else {
-                targetEl.scrollIntoView({behavior:'smooth', block: 'start'});
-            }
-            if (window.innerWidth <= 768 && isNavOpen) toggleBtn.click();
-        };
-        li.appendChild(a); listUl.appendChild(li);
-    });
-
-    toggleBtn.onclick = () => {
-        isNavOpen = !isNavOpen;
-        if (isNavOpen) {
-            navContainer.classList.add('open');
-            if (bodyEl && document.body.contains(navContainer) && getComputedStyle(navContainer).display !== 'none') {
-                 bodyEl.style.marginLeft = navContainer.offsetWidth + 'px';
-            } else if (bodyEl) {
-                 bodyEl.style.marginLeft = '220px';
-            }
-            toggleBtn.textContent = '閉';
-        } else {
-            navContainer.classList.remove('open');
-            if (bodyEl) bodyEl.style.marginLeft = '0';
-            toggleBtn.textContent = '見';
-        }
-    };
-    if (headingsForExport.length > 0 && window.innerWidth > 768) {
-        isNavOpen = false;
-        toggleBtn.click();
-    } else {
-        isNavOpen = false; navContainer.classList.remove('open');
-        if (bodyEl) bodyEl.style.marginLeft = '0';
-        toggleBtn.textContent = '見';
-    }
-}if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }); }
-else { applyInitialStyles(); initializeExportFilters(); initializeExportHeadingsNav(); }
+if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); }); }
+else { applyInitialStyles(); initializeExportFilters(); }
 })();`;
    }
 
@@ -3155,11 +3128,12 @@ color: var(--base-text-color);
 }
 .icon.export {
     display: block; width: 100%; height: 100%; border-radius: 50%;
-    object-fit: cover; object-position: 50% 0%;
     border: 3px solid;
     box-sizing: border-box; background-color: #f0f0f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
+img.icon.export { object-fit: cover; object-position: 50% 0%; }
+div.icon.export { background-size: cover; background-position: 50% 0%; background-repeat: no-repeat; }
 .icon-placeholder.export {
     display: none; width: 100%; height: 100%; border-radius: 50%;
     border: 3px solid;
@@ -3207,21 +3181,19 @@ color: var(--base-text-color);
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: 0; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transform: translateX(-200px); transition: transform 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
-.export-headings-nav.open { transform: translateX(0) !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
-.export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
-.export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
-.export-headings-nav .nav-content { padding: 5px; max-height: calc(100vh - 40px); overflow-y: auto; }
-.export-headings-nav h5 { margin-top: 0; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-.export-headings-nav ul { list-style: none; padding: 0; margin: 0; }
-.export-headings-nav li a { text-decoration: none; color: #337ab7; display: block; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; }
-.export-headings-nav li a:hover { color: #23527c; background: #eee; }
-.export-headings-nav li.level-1 a { padding-left: 0px; font-weight: bold; }
-.export-headings-nav li.level-2 a { padding-left: 10px; }
-.export-headings-nav li.level-3 a { padding-left: 20px; font-size: 0.95em; }
-.export-headings-nav li.level-4 a { padding-left: 30px; font-size: 0.9em; }
-.export-headings-nav li.level-5 a { padding-left: 40px; font-size: 0.85em; }
-.export-headings-nav li.level-6 a { padding-left: 50px; font-size: 0.85em; }
+.export-headings-nav { position: fixed; left: 0; top: 10px; z-index: 1000; font-size: 0.9em; max-width: min(220px, 80vw); }
+.export-headings-nav > summary { display: block; background: #3498db; color: white; padding: 10px 5px; cursor: pointer; list-style: none; border-radius: 0 4px 4px 0; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; user-select: none; -webkit-user-select: none; }
+.export-headings-nav > summary::-webkit-details-marker { display: none; }
+.export-headings-nav[open] > summary { border-radius: 0 4px 0 0; }
+.export-headings-nav .nav-content { display: flex; flex-direction: column; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 0 5px 5px; padding: 8px 10px; max-height: calc(100vh - 60px); overflow-y: auto; width: 200px; box-shadow: 2px 2px 8px rgba(0,0,0,0.15); }
+.export-headings-nav .nav-content a { text-decoration: none; color: #337ab7; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; font-size: 0.92em; }
+.export-headings-nav .nav-content a:hover { color: #23527c; background: #eee; }
+.nav-level-1 { font-weight: bold; }
+.nav-level-2 { padding-left: 10px; }
+.nav-level-3 { padding-left: 20px; font-size: 0.95em; }
+.nav-level-4 { padding-left: 30px; font-size: 0.9em; }
+.nav-level-5 { padding-left: 40px; font-size: 0.85em; }
+.nav-level-6 { padding-left: 50px; font-size: 0.85em; }
 @media (max-width: 768px) {
     body.export-body { padding: 0; font-size: ${Math.max(14, fontSize - 1)}px; margin-left: 0 !important; }
     .log-export-container { padding: 15px; margin: 10px; }
@@ -3240,9 +3212,7 @@ color: var(--base-text-color);
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-headings-nav { width: 180px; transform: translateX(-180px); }
-    .export-headings-nav.open { transform: translateX(0) !important; }
-    .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px;}
+    .export-headings-nav .nav-content { width: 170px; }
 }
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
 `;
