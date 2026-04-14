@@ -2633,11 +2633,15 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                           ctx.imageSmoothingQuality = 'high';
                           ctx.drawImage(img, 0, 0, w, h);
 
-                          // Prefer WebP (smaller, supports alpha)
+                          // Use PNG for images with transparency (alpha), JPEG for opaque images.
+                          // Avoids WebP which is not supported in data URIs on iOS Safari.
+                          const imageData = ctx.getImageData(0, 0, w, h);
+                          const hasAlpha = imageData.data.some((v, i) => i % 4 === 3 && v < 255);
                           let out = '';
-                          try { out = canvas.toDataURL('image/webp', 0.6); } catch (_e) { out = ''; }
-                          if (!out || out === 'data:,') {
-                              try { out = canvas.toDataURL('image/jpeg', 0.6); } catch (_e2) { out = ''; }
+                          if (hasAlpha) {
+                              try { out = canvas.toDataURL('image/png'); } catch (_e) { out = ''; }
+                          } else {
+                              try { out = canvas.toDataURL('image/jpeg', 0.85); } catch (_e) { out = ''; }
                           }
                           if (!out || out === 'data:,') {
                               // Fallback: original (already a dataURL)
