@@ -2799,14 +2799,16 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       let headingsNavHtml = '';
       if (headingsForNavOutput.length > 0) {
           const navLinks = headingsForNavOutput.map(h =>
-              `    <a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
+              `      <a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
           ).join('\n');
-          headingsNavHtml = `<details class="export-headings-nav">
-  <summary>見出し</summary>
-  <nav class="nav-content">
+          headingsNavHtml = `<input type="checkbox" id="export-nav-toggle" class="export-nav-toggle">
+<label for="export-nav-toggle" class="export-nav-hamburger">&#9776;</label>
+<div class="export-nav-overlay">
+  <label for="export-nav-toggle" class="export-nav-close">&#10005; 閉じる</label>
+  <nav class="export-nav-content">
 ${navLinks}
   </nav>
-</details>`;
+</div>`;
       }
       const safeHtmlTitle = escapeHtml(htmlTitle); const fontBodyClass = fontFamily || 'font-noto-sans';
       const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customizationSettings);
@@ -3181,19 +3183,20 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
-.export-headings-nav { position: fixed; left: 0; top: 10px; z-index: 1000; font-size: 0.9em; max-width: min(220px, 80vw); }
-.export-headings-nav > summary { display: block; background: #3498db; color: white; padding: 10px 5px; cursor: pointer; list-style: none; border-radius: 0 4px 4px 0; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; user-select: none; -webkit-user-select: none; }
-.export-headings-nav > summary::-webkit-details-marker { display: none; }
-.export-headings-nav[open] > summary { border-radius: 0 4px 0 0; }
-.export-headings-nav .nav-content { display: flex; flex-direction: column; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 0 5px 5px; padding: 8px 10px; max-height: calc(100vh - 60px); overflow-y: auto; width: 200px; box-shadow: 2px 2px 8px rgba(0,0,0,0.15); }
-.export-headings-nav .nav-content a { text-decoration: none; color: #337ab7; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; font-size: 0.92em; }
-.export-headings-nav .nav-content a:hover { color: #23527c; background: #eee; }
-.nav-level-1 { font-weight: bold; }
-.nav-level-2 { padding-left: 10px; }
-.nav-level-3 { padding-left: 20px; font-size: 0.95em; }
-.nav-level-4 { padding-left: 30px; font-size: 0.9em; }
-.nav-level-5 { padding-left: 40px; font-size: 0.85em; }
-.nav-level-6 { padding-left: 50px; font-size: 0.85em; }
+.export-nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
+.export-nav-hamburger { position: fixed; top: 12px; left: 12px; z-index: 1001; background: #3498db; color: white; padding: 8px 11px; border-radius: 6px; cursor: pointer; font-size: 1.4em; line-height: 1; user-select: none; -webkit-user-select: none; box-shadow: 0 2px 8px rgba(0,0,0,0.30); }
+.export-nav-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(10,10,10,0.93); overflow-y: auto; padding: 60px 24px 32px; box-sizing: border-box; }
+.export-nav-toggle:checked ~ .export-nav-overlay { display: block; }
+.export-nav-close { display: inline-block; position: absolute; top: 14px; right: 18px; color: white; font-size: 0.95em; cursor: pointer; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.45); border-radius: 5px; user-select: none; -webkit-user-select: none; }
+.export-nav-content { display: flex; flex-direction: column; max-width: 620px; margin: 0 auto; }
+.export-nav-content a { color: rgba(255,255,255,0.88); text-decoration: none; padding: 11px 8px; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 3px; font-size: 1em; -webkit-tap-highlight-color: transparent; }
+.export-nav-content a:hover, .export-nav-content a:active { background: rgba(255,255,255,0.12); color: white; }
+.nav-level-1 { font-weight: bold; font-size: 1.05em; }
+.nav-level-2 { padding-left: 16px !important; }
+.nav-level-3 { padding-left: 32px !important; font-size: 0.95em; }
+.nav-level-4 { padding-left: 48px !important; font-size: 0.9em; }
+.nav-level-5 { padding-left: 64px !important; font-size: 0.85em; color: rgba(255,255,255,0.68); }
+.nav-level-6 { padding-left: 80px !important; font-size: 0.85em; color: rgba(255,255,255,0.55); }
 @media (max-width: 768px) {
     body.export-body { padding: 0; font-size: ${Math.max(14, fontSize - 1)}px; margin-left: 0 !important; }
     .log-export-container { padding: 15px; margin: 10px; }
@@ -3212,7 +3215,7 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-headings-nav .nav-content { width: 170px; }
+    .export-nav-hamburger { top: 10px; left: 10px; padding: 7px 10px; font-size: 1.3em; }
 }
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
 `;
