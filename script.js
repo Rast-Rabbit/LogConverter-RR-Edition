@@ -3195,7 +3195,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                       // ZIP出力モード: imgタグ
                       const imageDisplay = iconRelativePath ? 'block' : 'none';
                       const iconSrc = iconRelativePath ? escapeHtml(iconRelativePath) : '';
-                      iconElHtml = `<img src="${iconSrc}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" loading="lazy" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
+                      iconElHtml = `<img src="${iconSrc}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
                   }
 
                   const bubbleBgStyle = finalAlignment === 'right' ?
