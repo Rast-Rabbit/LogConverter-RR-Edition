@@ -3260,6 +3260,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               } else if (item.type === 'error') { logBodyContent += `\n<div class="error-message export log-item" data-tab="all" data-speaker="all"><strong>解析エラー:</strong> ${escapeHtml(item.message)}<br><small>詳細: ${escapeHtml(item.details)}...</small></div>\n`; }
           } catch (htmlGenError) { console.error(`Error generating HTML for item ID ${item.id}:`, htmlGenError); logBodyContent += `<div class="export-error">アイテム(ID: ${item.id})のHTML生成エラー</div>\n`; }
       });
+      const isZipOutput = !outputOptions.assetClassMap;
+
       let headingsNavHtml = '';
       if (headingsForNavOutput.length > 0) {
           const navLinks = headingsForNavOutput.map(h =>
@@ -3274,8 +3276,15 @@ ${navLinks}
   </nav>
 </div>`;
       }
+      const filterControlsHtml = isZipOutput ? `
+<div class="filter-controls export">
+  <div class="filter-group"> <label for="export-tab-filter">タブ:</label> <nav id="export-log-tabs" class="tab-nav export" aria-label="Log Tabs"><span class="placeholder">読み込み中...</span></nav> </div>
+  <div id="export-all-mode-filter" class="all-mode-filter export hidden"></div>
+  <div class="filter-group"> <label for="export-speaker-filter">発言者:</label> <select id="export-speaker-filter" class="speaker-filter export"><option value="all">すべての発言者</option></select> </div>
+</div>` : '';
+      const themeToggleBtnHtml = isZipOutput ? `<div class="export-theme-toggle-wrap"><button id="export-theme-btn" onclick="toggleExportTheme()">🌙</button></div>` : '';
       const safeHtmlTitle = escapeHtml(htmlTitle); const fontBodyClass = fontFamily || 'font-noto-sans';
-      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customizationSettings);
+      const finalEmbeddedJsContent = generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customizationSettings, isZipOutput);
 
       const bodyClasses = [fontBodyClass, 'export-body', 'rr-site-light'];
       if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
@@ -3284,13 +3293,25 @@ ${navLinks}
 
       return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${safeHtmlTitle}</title><link rel="stylesheet" href="style.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet"></head>
-<body class="${bodyClasses.join(' ')}">${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1><div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
+<body class="${bodyClasses.join(' ')}">${themeToggleBtnHtml}${headingsNavHtml}<div class="log-export-container"><h1>${safeHtmlTitle}</h1>${filterControlsHtml}<div id="export-log-display" class="log-display export">${logBodyContent || '<p class="empty-log-message export">ログデータがありません。</p>'}</div></div><script>${finalEmbeddedJsContent}<\/script></body></html>`;
   }
-  function generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customSettings) {
+  function generateEmbeddedJsForExport(speakerDataForExport, baseTextColor, textEdgeColor, customSettings, isZipOutput) {
        const speakerMapString = JSON.stringify(speakerDataForExport || {});
        const baseTextColorString = JSON.stringify(baseTextColor || '#333333');
        const textEdgeColorString = JSON.stringify(textEdgeColor || '#ffffff');
        const s = customSettings || {};
+       const exportThemeColorsString = isZipOutput ? JSON.stringify({
+         lightNormal: s.normalBubbleColor || '#ffffff',
+         darkNormal:  s.darkNormalBubbleColor || 'rgba(255,255,255,0.09)',
+         lightRight:  s.rightBubbleColor || '#dcf8c6',
+         darkRight:   s.darkRightBubbleColor || 'rgba(200,240,120,0.18)',
+         lightBg:     s.backgroundColor || '#f3f4f6',
+         darkBg:      s.darkBgColor || 'rgba(0,0,0,0.30)',
+         lightText:   s.baseTextColor || '#333333',
+         darkText:    s.darkBaseTextColor || '#e8e8e8',
+         lightEdge:   s.textEdgeColor || '#ffffff',
+         darkEdge:    s.darkTextEdgeColor || 'transparent'
+       }) : 'null';
 
        return `
 (function() { "use strict";
@@ -3298,6 +3319,15 @@ ${navLinks}
 if (window.self !== window.top) { document.body.classList.add('rr-in-iframe'); }
 let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsInAllModeExport = new Set();
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
+${isZipOutput ? `const exportThemeColors = ${exportThemeColorsString};
+let currentExportTheme = 'light';
+// toggleExportTheme は function 宣言のためホイストされる。early return より前に window へ公開
+window.toggleExportTheme = function() {
+  currentExportTheme = currentExportTheme === 'light' ? 'dark' : 'light';
+  applyExportTheme(currentExportTheme);
+  var btn = document.getElementById('export-theme-btn');
+  if (btn) btn.textContent = currentExportTheme === 'dark' ? '\u2600' : '\uD83C\uDF19';
+};` : ''}
 const exportLogTabsNav = document.getElementById('export-log-tabs'); const exportSpeakerFilter = document.getElementById('export-speaker-filter');
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
 const allLogItems = exportLogDisplay ? Array.from(exportLogDisplay.querySelectorAll('.log-item')) : [];
@@ -3445,6 +3475,41 @@ function updateExportTabSeparators() {
         prevTab = tab;
     });
 }
+
+${isZipOutput ? `
+function applyExportTheme(theme) {
+  var isDark = theme === 'dark';
+  var c = exportThemeColors;
+  document.body.classList.remove('rr-site-dark','rr-site-light');
+  document.body.classList.add('rr-site-' + theme);
+  if (exportLogDisplay) {
+    exportLogDisplay.style.backgroundColor = isDark ? c.darkBg : c.lightBg;
+    exportLogDisplay.style.color = isDark ? c.darkText : c.lightText;
+    document.documentElement.style.setProperty('--text-edge-color', isDark ? c.darkEdge : c.lightEdge);
+    document.documentElement.style.setProperty('--bubble-right-bg-color', isDark ? c.darkRight : c.lightRight);
+    document.documentElement.style.setProperty('--bubble-right-arrow-color', isDark ? c.darkRight : c.lightRight);
+    exportLogDisplay.querySelectorAll('.bubble.export').forEach(function(b) {
+      var isRight = b.classList.contains('bubble-right');
+      var col = isDark ? (isRight ? c.darkRight : c.darkNormal) : (isRight ? c.lightRight : c.lightNormal);
+      b.style.setProperty('--bubble-bg-color', col);
+      b.style.setProperty('--bubble-arrow-color', col);
+    });
+    exportLogDisplay.querySelectorAll('.message-item.log-item').forEach(function(item) {
+      var sp = item.dataset.speaker;
+      var custom = (speakerSettings[sp] && speakerSettings[sp].customTextColor) ? speakerSettings[sp].customTextColor : null;
+      var tc = custom || (isDark ? c.darkText : c.lightText);
+      item.querySelectorAll('.speaker-name-default,.bubble.export,.narration-container.export')
+        .forEach(function(el) { el.style.color = tc; });
+    });
+  }
+}
+
+window.addEventListener('message', function(e) {
+  if (e.data && (e.data.theme === 'dark' || e.data.theme === 'light')) {
+    currentExportTheme = e.data.theme;
+    applyExportTheme(e.data.theme);
+  }
+});` : ''}
 
 ;
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); }); }
@@ -3651,6 +3716,97 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
     .export-nav-hamburger { top: 10px; left: 10px; padding: 7px 10px; font-size: 1.3em; }
 }
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
+${!isSingleFileHtml ? `
+.filter-controls.export {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-start;
+}
+.filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-group label { font-weight: bold; font-size: 0.9em; color: #495057; white-space: nowrap; }
+.tab-nav.export { display: flex; flex-wrap: wrap; gap: 5px; }
+.tab-button.export {
+    background-color: #e9ecef; border: 1px solid #ced4da; color: #495057;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em;
+    transition: background-color 0.2s, color 0.2s; white-space: nowrap;
+}
+.tab-button.export:hover { background-color: #dee2e6; }
+.tab-button.export.active { background-color: #0d6efd; border-color: #0d6efd; color: white; font-weight: bold; }
+.all-mode-filter.export {
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 10px;
+}
+.all-mode-filter.export.hidden { display: none; }
+.all-mode-checkbox-container { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+.all-mode-filter.export .checkbox-wrapper { display: flex; align-items: center; }
+.all-mode-filter.export input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
+.all-mode-filter.export label { font-size: 0.85em; cursor: pointer; }
+.all-mode-buttons { margin-left: auto; display: flex; gap: 8px; }
+.all-mode-buttons button { font-size: 0.75em; padding: 2px 6px; background: #ddd; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; }
+.speaker-filter.export {
+    padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px;
+    font-size: 0.9em; background-color: white; min-width: 150px;
+}
+.tab-nav.export .placeholder { font-size: 0.85em; color: #6c757d; }
+.export-theme-toggle-wrap { position: fixed; top: 10px; right: 10px; z-index: 9999; }
+.export-theme-toggle-wrap button { padding: 5px 14px; border-radius: 20px; cursor: pointer; font-size: 0.82em; font-weight: bold; transition: background-color 0.3s ease, color 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+body.rr-site-light .export-theme-toggle-wrap button { background-color: #c94030; color: #fff; border: 2px solid #a03020; }
+body.rr-site-dark .export-theme-toggle-wrap button { background-color: #FF7A5C; color: #1a1030; border: 2px solid #d95030; }
+html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
+    background-image: url('img/bg.webp');
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #000;
+}
+@supports (-webkit-touch-callout: none) {
+    html:has(body.rr-site-dark.export-body:not(.rr-in-iframe):not(.has-background-image)) {
+        background-attachment: scroll;
+    }
+}
+body.rr-site-dark.export-body { color: #e8e8e8; }
+body.rr-site-dark.export-body.rr-in-iframe { background-color: transparent !important; }
+body.rr-site-dark.export-body:not(.rr-in-iframe) { background-color: transparent !important; }
+body.rr-site-dark.export-body:not(.rr-in-iframe)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.28));
+    z-index: -1;
+}
+body.rr-site-dark.export-body .log-export-container {
+    background-color: rgba(0,0,0,0.52) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 4px 28px rgba(0,0,0,0.60);
+}
+/* ── ダーク：フィルタ / タブ / 見出しナビ ── */
+body.rr-site-dark .filter-controls.export { background-color: rgba(0,0,0,0.42) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .filter-group label { color: rgba(232,232,232,0.80); }
+body.rr-site-dark .speaker-filter.export { background-color: rgba(0,0,0,0.40) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+body.rr-site-dark .tab-button.export { background-color: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+body.rr-site-dark .tab-button.export:hover { background-color: rgba(255,255,255,0.15) !important; }
+body.rr-site-dark h1 { color: #FF7A5C !important; }
+body.rr-site-dark .heading-item.export { color: #e8e8e8 !important; }
+body.rr-site-dark .heading-item.export.level-1 { color: #FF7A5C !important; border-bottom-color: #FF7A5C !important; }
+body.rr-site-dark .heading-item.export.level-2 { color: #8880E8 !important; border-bottom-color: rgba(136,128,232,0.45) !important; }
+body.rr-site-dark .heading-item.export.level-3 { color: rgba(136,128,232,0.88) !important; }
+body.rr-site-dark .heading-item.export.level-4 { color: rgba(136,128,232,0.80) !important; }
+body.rr-site-dark .heading-item.export.level-5 { color: rgba(136,128,232,0.60) !important; }
+body.rr-site-dark .heading-item.export.level-6 { color: rgba(136,128,232,0.44) !important; }
+body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+` : ''}
 `;
    }
 
