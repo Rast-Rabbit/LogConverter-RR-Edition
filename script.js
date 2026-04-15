@@ -1346,6 +1346,7 @@
               renderLog();
           }
       }
+      recomputeFilterState();
       closeModal(genericModal);
   }
 
@@ -2196,6 +2197,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       }
 
       if (itemToDelete.type === 'heading') updateHeadingsNav();
+      if (itemToDelete.type === 'message') recomputeFilterState();
   }
 
   function handleMessageEdit(event) {
@@ -2361,6 +2363,36 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       });
   }
 
+  function recomputeFilterState() {
+      // speakerFrequencies と uniqueTabsFound を displayLogData から再計算し、
+      // フィルタUIを再構築する。発言者/タブ変更・追加・削除の後に呼ぶ。
+      speakerFrequencies = {};
+      const newTabs = new Set();
+      displayLogData.forEach(item => {
+          if (item.type !== 'message') return;
+          if (item.speaker && item.speaker !== 'system' && item.speaker !== '不明') {
+              speakerFrequencies[item.speaker] = (speakerFrequencies[item.speaker] || 0) + 1;
+          }
+          if (item.tab) newTabs.add(item.tab);
+      });
+
+      uniqueTabsFound = newTabs.size > 0 ? new Set([...newTabs, 'all']) : new Set(['all', 'main']);
+
+      // visibleTabsInAllMode: 消えたタブを除去し、新規タブを追加
+      const validTabs = new Set([...uniqueTabsFound].filter(t => t !== 'all'));
+      [...visibleTabsInAllMode].forEach(t => { if (!validTabs.has(t)) visibleTabsInAllMode.delete(t); });
+      validTabs.forEach(t => { if (!visibleTabsInAllMode.has(t)) visibleTabsInAllMode.add(t); });
+
+      // 存在しなくなったタブ/発言者を参照しているフィルタをリセット
+      if (currentTabFilter !== 'all' && !uniqueTabsFound.has(currentTabFilter)) currentTabFilter = 'all';
+      if (currentSpeakerFilter !== 'all' && !speakerFrequencies[currentSpeakerFilter] && !characterSettings[currentSpeakerFilter]?.isNew) currentSpeakerFilter = 'all';
+
+      populateTabsUI();
+      populateTabSettingsUI();
+      populateSpeakerFilterUI();
+      if (currentTabFilter === 'all') populateAllModeTabFilterUI();
+  }
+
   function applySpeakerChange(messageId, newSpeaker) {
       const idx = displayLogData.findIndex(d => d.id === messageId && d.type === 'message');
       if (idx === -1) return;
@@ -2376,6 +2408,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (setting?.color) item.color = setting.color;
 
       updateSingleItemInDomOrRemove(item);
+      recomputeFilterState();
   }
 
   function applyTabChange(messageId, newTab) {
@@ -2384,6 +2417,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const item = displayLogData[idx];
       item.tab = newTab;
       updateSingleItemInDomOrRemove(item);
+      recomputeFilterState();
   }
 
   function isItemVisibleInCurrentEditorView(item) {
