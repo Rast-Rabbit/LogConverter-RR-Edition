@@ -386,32 +386,31 @@
       return cache;
   }
 
-  // data.xml から「ハッシュ→ラベル」マップと「キャラ名→発言色」マップを構築
-  function buildUdonariumDataMaps(dataDoc) {
-      const hashToLabel  = new Map(); // hash → currentValue（表情差分名）
-      const charColorMap = new Map(); // name → chatColorCode.0
-      const charPos0Hash = new Map(); // name → imagePos=0 のハッシュ
-      if (!dataDoc) return { hashToLabel, charColorMap, charPos0Hash };
-
+  // data.xml からキャラ名ごとの詳細データを構築
+  // charDataMap: name → { pos0Hash, allImages: [{hash, label}], color }
+  function buildUdonariumCharDataMap(dataDoc) {
+      const charDataMap = new Map();
+      if (!dataDoc) return charDataMap;
       for (const charEl of dataDoc.querySelectorAll('character')) {
           const nameEl = charEl.querySelector('data[name="character"] > data[name="common"] > data[name="name"]');
           const name = nameEl?.textContent.trim();
-          const color0 = charEl.getAttribute('chatColorCode.0');
-          if (name && color0) charColorMap.set(name, color0);
-
+          if (!name) continue;
+          const color0 = charEl.getAttribute('chatColorCode.0') || null;
+          const allImages = [];
           const imageSection = charEl.querySelector('data[name="character"] > data[name="image"]');
-          if (!imageSection) continue;
-          let isFirst = true;
-          for (const imgEl of imageSection.querySelectorAll(':scope > data[type="image"][name="imageIdentifier"]')) {
-              const hash  = imgEl.textContent.trim();
-              const label = imgEl.getAttribute('currentValue');
-              if (!hash) continue;
-              if (label && !hashToLabel.has(hash)) hashToLabel.set(hash, label);
-              if (isFirst && name && !charPos0Hash.has(name)) charPos0Hash.set(name, hash);
-              isFirst = false;
+          if (imageSection) {
+              for (const imgEl of imageSection.querySelectorAll(':scope > data[type="image"][name="imageIdentifier"]')) {
+                  const hash  = imgEl.textContent.trim();
+                  const label = imgEl.getAttribute('currentValue') || null;
+                  if (hash) allImages.push({ hash, label });
+              }
+          }
+          // 同名コマが複数ある場合は最初のものを優先
+          if (!charDataMap.has(name)) {
+              charDataMap.set(name, { pos0Hash: allImages[0]?.hash || null, allImages, color: color0 });
           }
       }
-      return { hashToLabel, charColorMap, charPos0Hash };
+      return charDataMap;
   }
 
   // メインパーサー（チャットベースでキャラクター情報を構築）
@@ -429,8 +428,8 @@
       const chatDoc = parser.parseFromString(chatXmlStr, 'text/xml');
       const dataDoc = dataXmlStr ? parser.parseFromString(dataXmlStr, 'text/xml') : null;
 
-      const imageCache = await buildUdonariumImageCache(zip);
-      const { hashToLabel, charColorMap, charPos0Hash } = buildUdonariumDataMaps(dataDoc);
+      const imageCache     = await buildUdonariumImageCache(zip);
+      const charDataMap    = buildUdonariumCharDataMap(dataDoc);
 
       // ── Step 1: チャット全メッセージを収集 ──
       const rawMessages = [];
@@ -450,54 +449,82 @@
       rawMessages.sort((a, b) => a.ts - b.ts);
 
       // ── Step 2: 発言者ごとの imageIdentifier 使用統計を収集 ──
-      // speakerInfo: name → { imageIdCount: Map<hash, count>, firstColor }
-      const speakerInfo = new Map();
+      const speakerInfo = new Map(); // name → { chatImageIds: Set<hash>, firstColor }
       for (const msg of rawMessages) {
           if (!speakerInfo.has(msg.name)) {
-              speakerInfo.set(msg.name, { imageIdCount: new Map(), firstColor: msg.color });
+              speakerInfo.set(msg.name, { chatImageIds: new Set(), firstColor: msg.color });
           }
           const si = speakerInfo.get(msg.name);
           if (msg.imageId && msg.imageId !== 'none_icon') {
-              si.imageIdCount.set(msg.imageId, (si.imageIdCount.get(msg.imageId) || 0) + 1);
+              si.chatImageIds.add(msg.imageId);
           }
       }
 
       // ── Step 3: 発言者ごとにキャラクターデータを構築 ──
-      // characterDataByName: name → { defaultHash, defaultIcon, expressionsByHash: Map<hash, {label, dataUrl}>, color }
+      // characterDataByName: name → { defaultHash, defaultIcon, expressionsByHash: Map<hash,{label,dataUrl}>, color }
       const characterDataByName = new Map();
       for (const [name, si] of speakerInfo) {
-          // デフォルトアイコン: data.xml の imagePos=0 ハッシュ優先、なければ最頻出
-          let defaultHash = charPos0Hash.get(name) || null;
-          if (!defaultHash || !si.imageIdCount.has(defaultHash)) {
-              defaultHash = null;
+          const koma = charDataMap.get(name) || null;
+
+          // デフォルトアイコン: コマの imagePos=0 優先、コマなし→チャット最頻出
+          let defaultHash = koma?.pos0Hash || null;
+          if (!defaultHash) {
+              // 最頻出は rawMessages で数える
+              const freq = new Map();
+              for (const msg of rawMessages) {
+                  if (msg.name === name && msg.imageId && msg.imageId !== 'none_icon') {
+                      freq.set(msg.imageId, (freq.get(msg.imageId) || 0) + 1);
+                  }
+              }
               let maxCount = 0;
-              for (const [hash, count] of si.imageIdCount) {
+              for (const [hash, count] of freq) {
                   if (count > maxCount) { maxCount = count; defaultHash = hash; }
               }
           }
 
-          // 表情差分: デフォルト以外の全 imageIdentifier にラベルを割り当て
           const expressionsByHash = new Map(); // hash → { label, dataUrl }
           const usedLabels = new Set();
-          let autoCounter = 1;
-          for (const [hash] of si.imageIdCount) {
-              if (hash === defaultHash) continue;
-              let label = hashToLabel.get(hash) || null;
-              // ラベル重複回避
-              if (label && usedLabels.has(label)) {
-                  let n = 2;
-                  while (usedLabels.has(`${label}${n}`)) n++;
-                  label = `${label}${n}`;
+          let autoCounter  = 1;
+
+          // フェーズA: コマの表情差分を全登録（imagePos=1 以降）
+          if (koma) {
+              const komaHashSet = new Set(koma.allImages.map(i => i.hash));
+              for (let i = 1; i < koma.allImages.length; i++) {
+                  const { hash, label: rawLabel } = koma.allImages[i];
+                  if (!hash) continue;
+                  let label = rawLabel || null;
+                  if (!label) {
+                      do { label = `表情${autoCounter++}`; } while (usedLabels.has(label));
+                  } else if (usedLabels.has(label)) {
+                      let n = 2; while (usedLabels.has(`${label}${n}`)) n++;
+                      label = `${label}${n}`;
+                  }
+                  usedLabels.add(label);
+                  expressionsByHash.set(hash, { label, dataUrl: imageCache.get(hash) || null });
               }
-              if (!label) {
+
+              // フェーズB: チャット限定の imageIdentifier（コマに含まれないもの）を追加
+              for (const hash of si.chatImageIds) {
+                  if (hash === defaultHash) continue;
+                  if (komaHashSet.has(hash)) continue; // コマ済み
+                  let label;
                   do { label = `表情${autoCounter++}`; } while (usedLabels.has(label));
+                  usedLabels.add(label);
+                  expressionsByHash.set(hash, { label, dataUrl: imageCache.get(hash) || null });
               }
-              usedLabels.add(label);
-              expressionsByHash.set(hash, { label, dataUrl: imageCache.get(hash) || null });
+          } else {
+              // コマなし: チャットに登場した imageIdentifier のみ自動生成
+              for (const hash of si.chatImageIds) {
+                  if (hash === defaultHash) continue;
+                  let label;
+                  do { label = `表情${autoCounter++}`; } while (usedLabels.has(label));
+                  usedLabels.add(label);
+                  expressionsByHash.set(hash, { label, dataUrl: imageCache.get(hash) || null });
+              }
           }
 
-          // 色: data.xml の chatColorCode.0 優先、なければ最初の messColor
-          const color = charColorMap.get(name) || si.firstColor || '#000000';
+          // 色: コマの chatColorCode.0 優先、なければ最初の messColor
+          const color = koma?.color || si.firstColor || '#000000';
 
           characterDataByName.set(name, {
               defaultHash,
