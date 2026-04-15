@@ -93,7 +93,10 @@
 
             <div id="settings-panel-settings" class="mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-settings">
                 <div class="mb-5">
-                    <h3 class="text-base font-semibold text-gray-700 mb-2">タブ設定:</h3>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-base font-semibold text-gray-700">タブ設定:</h3>
+                        <button id="add-new-tab-button" class="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600">新規タブ追加</button>
+                    </div>
                     <p class="text-sm text-gray-600 mb-2">タブごとにチャットの表示方向（左/右）を設定します。</p>
                     <div id="tab-settings-ui" class="border rounded-md p-3 bg-white shadow-sm"><p class="text-gray-500 italic text-sm">ログファイルまたはプロジェクトファイルを読み込むと表示されます。</p></div>
                 </div>

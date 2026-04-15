@@ -100,6 +100,7 @@
   const addHeaderImageButton = document.getElementById('add-header-image-button');
   const skipDeleteConfirmToggle = document.getElementById('skip-delete-confirm-toggle');
   const addNewCharacterButton = document.getElementById('add-new-character-button');
+  const addNewTabButton = document.getElementById('add-new-tab-button');
   const baseTextColorInput = document.getElementById('base-text-color');
   const textEdgeColorInput = document.getElementById('text-edge-color-input');
   const backgroundImageInput = document.getElementById('background-image-input');
@@ -656,11 +657,11 @@
   function enableControls() {
        exportButton.disabled = false; if (exportHtmlButton) exportHtmlButton.disabled = false; saveProjectButton.disabled = false;
        speakerFilterSelect.disabled = Object.keys(speakerFrequencies).length === 0 && Object.keys(characterSettings).filter(s => !speakerFrequencies[s]).length === 0;
-       exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; addHeaderImageButton.disabled = false; addNewCharacterButton.disabled = false;
+       exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; addHeaderImageButton.disabled = false; addNewCharacterButton.disabled = false; if (addNewTabButton) addNewTabButton.disabled = false;
   }
   function disableControls() {
       exportButton.disabled = true; if (exportHtmlButton) exportHtmlButton.disabled = true; saveProjectButton.disabled = true;
-      speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; addHeaderImageButton.disabled = true; addNewCharacterButton.disabled = true;
+      speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; addHeaderImageButton.disabled = true; addNewCharacterButton.disabled = true; if (addNewTabButton) addNewTabButton.disabled = true;
   }
 
   function parseCocofoliaLogHtml(htmlContent) {
@@ -1474,7 +1475,7 @@
           if (!tabSettings[tab]) tabSettings[tab] = { alignment: 'left' };
 
           const row = document.createElement('div');
-          row.className = 'flex items-center space-x-3 py-2 border-b border-gray-200 last:border-0';
+          row.className = 'flex flex-wrap items-center gap-x-3 gap-y-1 py-2 border-b border-gray-200 last:border-0';
 
           const nameSpan = document.createElement('span');
           nameSpan.className = 'text-sm font-medium text-gray-700 flex-shrink-0 w-28 truncate';
@@ -1485,27 +1486,124 @@
           label.className = 'text-sm text-gray-600 flex-shrink-0';
           label.textContent = '表示方向:';
 
-          const select = document.createElement('select');
-          select.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+          const alignSelect = document.createElement('select');
+          alignSelect.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
           [['left', '左'], ['right', '右']].forEach(([val, text]) => {
               const option = document.createElement('option');
               option.value = val;
               option.textContent = text;
               if ((tabSettings[tab].alignment || 'left') === val) option.selected = true;
-              select.appendChild(option);
+              alignSelect.appendChild(option);
           });
-          select.addEventListener('change', (e) => {
+          alignSelect.addEventListener('change', (e) => {
               if (!tabSettings[tab]) tabSettings[tab] = {};
               tabSettings[tab].alignment = e.target.value;
               renderLog();
           });
 
+          // 削除ボタン
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'ml-auto text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex-shrink-0';
+          deleteBtn.textContent = '削除';
+          deleteBtn.title = `タブ「${tab}」とそのメッセージをすべて削除`;
+          deleteBtn.addEventListener('click', () => {
+              if (!confirm(`タブ「${tab}」に属するメッセージをすべて削除します。\nこの操作は取り消せません。よろしいですか？`)) return;
+              deleteTab(tab);
+          });
+
+          // 他のタブに統合エリア
+          const mergeWrapper = document.createElement('div');
+          mergeWrapper.className = 'flex items-center gap-1 flex-shrink-0';
+
+          const mergeLabel = document.createElement('span');
+          mergeLabel.className = 'text-xs text-gray-600';
+          mergeLabel.textContent = '統合先:';
+
+          const mergeSelect = document.createElement('select');
+          mergeSelect.className = 'text-xs p-1 border border-gray-300 rounded-md shadow-sm';
+          const otherTabs = tabs.filter(t => t !== tab);
+          if (otherTabs.length === 0) {
+              const placeholder = document.createElement('option');
+              placeholder.value = '';
+              placeholder.textContent = '(他のタブなし)';
+              mergeSelect.appendChild(placeholder);
+              mergeSelect.disabled = true;
+          } else {
+              otherTabs.forEach(t => {
+                  const opt = document.createElement('option');
+                  opt.value = t;
+                  opt.textContent = t;
+                  mergeSelect.appendChild(opt);
+              });
+          }
+
+          const mergeBtn = document.createElement('button');
+          mergeBtn.className = 'text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex-shrink-0';
+          mergeBtn.textContent = '統合';
+          mergeBtn.disabled = otherTabs.length === 0;
+          mergeBtn.title = `このタブのメッセージを選択したタブに移動し、このタブを削除`;
+          mergeBtn.addEventListener('click', () => {
+              const toTab = mergeSelect.value;
+              if (!toTab) return;
+              if (!confirm(`タブ「${tab}」のメッセージをすべてタブ「${toTab}」に統合します。\n元のタブ「${tab}」は削除されます。よろしいですか？`)) return;
+              mergeTab(tab, toTab);
+          });
+
+          mergeWrapper.appendChild(mergeLabel);
+          mergeWrapper.appendChild(mergeSelect);
+          mergeWrapper.appendChild(mergeBtn);
+
           row.appendChild(nameSpan);
           row.appendChild(label);
-          row.appendChild(select);
+          row.appendChild(alignSelect);
+          row.appendChild(deleteBtn);
+          row.appendChild(mergeWrapper);
           fragment.appendChild(row);
       });
       tabSettingsDiv.appendChild(fragment);
+  }
+
+  function deleteTab(tabName) {
+      displayLogData = displayLogData.filter(item => !(item.type === 'message' && item.tab === tabName));
+      uniqueTabsFound.delete(tabName);
+      delete tabSettings[tabName];
+      visibleTabsInAllMode.delete(tabName);
+      // uniqueTabsFound が 'all' しか残らない場合の処理
+      const remaining = [...uniqueTabsFound].filter(t => t !== 'all');
+      if (remaining.length === 0) {
+          uniqueTabsFound = new Set(['all']);
+          visibleTabsInAllMode = new Set();
+      }
+      if (currentTabFilter === tabName) currentTabFilter = 'all';
+      populateTabsUI();
+      populateTabSettingsUI();
+      populateSpeakerFilterUI();
+      renderLog();
+  }
+
+  function mergeTab(fromTab, toTab) {
+      displayLogData.forEach(item => {
+          if (item.type === 'message' && item.tab === fromTab) {
+              item.tab = toTab;
+          }
+      });
+      uniqueTabsFound.delete(fromTab);
+      delete tabSettings[fromTab];
+      visibleTabsInAllMode.delete(fromTab);
+      if (currentTabFilter === fromTab) currentTabFilter = toTab;
+      populateTabsUI();
+      populateTabSettingsUI();
+      populateSpeakerFilterUI();
+      renderLog();
+  }
+
+  function addNewTab(tabName) {
+      uniqueTabsFound.add(tabName);
+      tabSettings[tabName] = { alignment: 'left' };
+      visibleTabsInAllMode.add(tabName);
+      if (!uniqueTabsFound.has('all')) uniqueTabsFound.add('all');
+      populateTabsUI();
+      populateTabSettingsUI();
   }
 
   function populateSpeakerFilterUI() {
@@ -3525,6 +3623,14 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
       insertImageInput.addEventListener('change', handleInsertImageFile);
       addHeaderImageButton.addEventListener('click', () => triggerImageInsert('header', null));
       addNewCharacterButton.addEventListener('click', openAddNewCharacterModal);
+      if (addNewTabButton) addNewTabButton.addEventListener('click', () => {
+          const name = prompt('新規タブ名を入力してください:');
+          if (!name || !name.trim()) return;
+          const trimmed = name.trim();
+          if (trimmed === 'all') { alert('「all」はシステム予約名のため使用できません。'); return; }
+          if (uniqueTabsFound.has(trimmed)) { alert(`タブ「${trimmed}」はすでに存在します。`); return; }
+          addNewTab(trimmed);
+      });
       toggleHeadingsNavBtn.addEventListener('click', toggleHeadingsNav);
       genericModalCloseBtn.addEventListener('click', () => closeModal(genericModal));
       genericModalCancelBtn.addEventListener('click', () => closeModal(genericModal));
