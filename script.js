@@ -3467,11 +3467,23 @@ function applyLazyReveal() {
 
 function lazyRevealMore() {
     var hiddenItems = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
+    if (hiddenItems.length === 0) return;
     hiddenItems.slice(0, 80).forEach(function(el) {
         var prev = el.previousElementSibling;
         if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
         el.classList.remove('lazy-hidden');
     });
+    // センチネルがバッチ開示後もビューポート内に残っている場合、
+    // IntersectionObserverは再発火しないため次フレームで自力確認する
+    var remaining = exportLogDisplay.querySelectorAll('.log-item.lazy-hidden');
+    if (remaining.length > 0) {
+        requestAnimationFrame(function() {
+            var sentinelEl = document.getElementById('export-lazy-sentinel');
+            if (!sentinelEl) return;
+            var rect = sentinelEl.getBoundingClientRect();
+            if (rect.top < window.innerHeight + 200) lazyRevealMore();
+        });
+    }
 }
 ;
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); }); }
