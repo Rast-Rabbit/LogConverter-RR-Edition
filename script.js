@@ -22,7 +22,8 @@
       darkTextEdgeColor: 'transparent',   // ダーク：縁取りなし
       backgroundImage: null,
       backgroundImageFileName: null,
-      includeThemeToggle: false           // ZIP出力に切り替えボタンを含めない（false=含める）
+      includeThemeToggle: false,           // ZIP出力に切り替えボタンを含めない（false=含める）
+      speakerAlignmentMode: false          // true=発言者ごとに表示方向を設定、false=タブごと
    };
   let currentTheme = 'light';
    let currentTabFilter = 'all';
@@ -114,6 +115,7 @@
   const darkBaseTextColorInput = document.getElementById('dark-base-text-color');
   const darkTextEdgeColorInput = document.getElementById('dark-text-edge-color');
   const includeThemeToggleInput = document.getElementById('include-theme-toggle');
+  const speakerAlignmentModeToggle = document.getElementById('speaker-alignment-mode-toggle');
 
 
   const headingsNavPanel = document.getElementById('headings-nav-panel');
@@ -892,6 +894,30 @@
           forceNarrationDiv.appendChild(switchLabel);
 
 
+          // 表示方向（発言者ごとモード時のみ表示）
+          const charAlignDiv = document.createElement('div');
+          charAlignDiv.className = 'flex items-center space-x-2';
+          if (!customizationSettings.speakerAlignmentMode) charAlignDiv.classList.add('hidden');
+          const charAlignLabel = document.createElement('span');
+          charAlignLabel.className = 'text-sm font-medium text-gray-700';
+          charAlignLabel.textContent = '表示方向:';
+          const charAlignSelect = document.createElement('select');
+          charAlignSelect.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+          [['left', '左'], ['right', '右']].forEach(([val, text]) => {
+              const opt = document.createElement('option');
+              opt.value = val; opt.textContent = text;
+              if ((setting.alignment || 'left') === val) opt.selected = true;
+              charAlignSelect.appendChild(opt);
+          });
+          charAlignSelect.addEventListener('change', (e) => {
+              if (characterSettings[speaker]) {
+                  characterSettings[speaker].alignment = e.target.value;
+                  renderLog();
+              }
+          });
+          charAlignDiv.appendChild(charAlignLabel);
+          charAlignDiv.appendChild(charAlignSelect);
+
           const mergeBtn = document.createElement('button');
           mergeBtn.textContent = '別キャラに統合…';
           mergeBtn.className = 'text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50 self-center';
@@ -902,6 +928,7 @@
           controlsGrid.appendChild(charColorDiv);
           controlsGrid.appendChild(charTextColorDiv);
           controlsGrid.appendChild(forceNarrationDiv);
+          controlsGrid.appendChild(charAlignDiv);
           controlsGrid.appendChild(mergeBtn);
 
           nameAndControlsDiv.appendChild(nameLabel); nameAndControlsDiv.appendChild(nameInput); nameAndControlsDiv.appendChild(controlsGrid);
@@ -1484,12 +1511,16 @@
           nameSpan.textContent = tab;
           nameSpan.title = tab;
 
+          const isSpeakerMode = !!customizationSettings.speakerAlignmentMode;
+
           const label = document.createElement('span');
           label.className = 'text-sm text-gray-600 flex-shrink-0';
           label.textContent = '表示方向:';
+          if (isSpeakerMode) label.classList.add('hidden');
 
           const alignSelect = document.createElement('select');
           alignSelect.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+          if (isSpeakerMode) alignSelect.classList.add('hidden');
           [['left', '左'], ['right', '右']].forEach(([val, text]) => {
               const option = document.createElement('option');
               option.value = val;
@@ -1762,7 +1793,9 @@
       const setting = characterSettings[logItem.speaker] || { displayName: logItem.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
       const isForcedNarration = setting.forceNarration || false;
       const currentDisplayMode = isForcedNarration ? 'narration' : (logItem.displayMode || 'bubble');
-      const finalAlignment = tabSettings[logItem.tab]?.alignment || 'left';
+      const finalAlignment = customizationSettings.speakerAlignmentMode
+          ? (setting.alignment || 'left')
+          : (tabSettings[logItem.tab]?.alignment || 'left');
       const messageTextColor = setting.customTextColor ||
         (currentTheme === 'dark' ? customizationSettings.darkBaseTextColor : customizationSettings.baseTextColor);
 
@@ -2519,6 +2552,12 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           customizationSettings.darkBaseTextColor     = darkBaseTextColorInput.value;
           customizationSettings.darkTextEdgeColor     = darkTextEdgeColorInput.value;
           customizationSettings.includeThemeToggle    = includeThemeToggleInput.checked;
+          const prevSpeakerMode = customizationSettings.speakerAlignmentMode;
+          customizationSettings.speakerAlignmentMode = speakerAlignmentModeToggle ? speakerAlignmentModeToggle.checked : false;
+          if (prevSpeakerMode !== customizationSettings.speakerAlignmentMode) {
+              populateTabSettingsUI();
+              populateCharacterSettingsUI();
+          }
 
           renderLog();
       } catch (error) { console.error("Error applying customization:", error); alert(`カスタマイズ適用エラー: ${error.message}`); }
@@ -2535,7 +2574,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           textEdgeColor: '#ffffff',         darkTextEdgeColor: 'transparent',
           backgroundImage: null,
           backgroundImageFileName: null,
-          includeThemeToggle: false
+          includeThemeToggle: false,
+          speakerAlignmentMode: false
       };
       delete uploadedFiles[BACKGROUND_IMAGE_KEY];
   }
@@ -2558,6 +2598,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#e8e8e8';
           if (darkTextEdgeColorInput) darkTextEdgeColorInput.value = customizationSettings.darkTextEdgeColor || 'transparent';
           if (includeThemeToggleInput) includeThemeToggleInput.checked = !!customizationSettings.includeThemeToggle;
+          if (speakerAlignmentModeToggle) speakerAlignmentModeToggle.checked = !!customizationSettings.speakerAlignmentMode;
 
           if (customizationSettings.backgroundImage && customizationSettings.backgroundImageFileName) {
               backgroundImagePreview.src = customizationSettings.backgroundImage;
@@ -3041,7 +3082,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               if (item.type === 'message') {
                   const charSettingFull = characterSettings[item.speaker] || { displayName: item.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
                   const speakerName = charSettingFull.displayName; const originalSpeaker = item.speaker;
-                  const finalAlignment = (tabSettingsData && tabSettingsData[item.tab])?.alignment || 'left';
+                  const finalAlignment = customizationSettings.speakerAlignmentMode
+                      ? (charSettingFull.alignment || 'left')
+                      : ((tabSettingsData && tabSettingsData[item.tab])?.alignment || 'left');
                   const finalDisplayMode = (speakerData[originalSpeaker] && speakerData[originalSpeaker].forceNarration) ? 'narration' : (item.displayMode || 'bubble');
 
                   const messageTextColor = charSettingFull.customTextColor || baseTextColor;
@@ -3667,6 +3710,7 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
       if (darkBaseTextColorInput) darkBaseTextColorInput.addEventListener('change', applyCustomization);
       if (darkTextEdgeColorInput) darkTextEdgeColorInput.addEventListener('change', applyCustomization);
       if (includeThemeToggleInput) includeThemeToggleInput.addEventListener('change', applyCustomization);
+      if (speakerAlignmentModeToggle) speakerAlignmentModeToggle.addEventListener('change', applyCustomization);
 
       // カラースウォッチのリアルタイム更新
       ['dark-normal-bubble-color', 'dark-right-bubble-color', 'dark-bg-color', 'dark-text-edge-color'].forEach(id => {
