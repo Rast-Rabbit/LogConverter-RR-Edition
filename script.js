@@ -3264,10 +3264,16 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
       let headingsNavHtml = '';
       if (headingsForNavOutput.length > 0) {
-          const navLinks = headingsForNavOutput.map(h =>
-              `      <a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
-          ).join('\n');
-          headingsNavHtml = `<input type="checkbox" id="export-nav-toggle" class="export-nav-toggle">
+          if (isZipOutput) {
+              const navLinks = headingsForNavOutput.map(h =>
+                  `<a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
+              ).join('\n');
+              headingsNavHtml = `<div id="export-headings-nav-container" class="export-headings-nav"><button id="export-toggle-headings-nav" title="見出し一覧の表示/非表示">見出し</button><div class="nav-content"><h5>見出し</h5>${navLinks}</div></div>`;
+          } else {
+              const navLinks = headingsForNavOutput.map(h =>
+                  `      <a href="#${h.id}" class="nav-level-${h.level}">${escapeHtml(h.text)}</a>`
+              ).join('\n');
+              headingsNavHtml = `<input type="checkbox" id="export-nav-toggle" class="export-nav-toggle">
 <label for="export-nav-toggle" class="export-nav-hamburger">&#9776;</label>
 <div class="export-nav-overlay">
   <label for="export-nav-toggle" class="export-nav-close">&#10005; 閉じる</label>
@@ -3275,6 +3281,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 ${navLinks}
   </nav>
 </div>`;
+          }
       }
       const filterControlsHtml = isZipOutput ? `
 <div class="filter-controls export">
@@ -3354,6 +3361,17 @@ function applyInitialStyles() {
     });
 }
 
+${isZipOutput ? `
+(function() {
+  var navContainer = document.getElementById('export-headings-nav-container');
+  var navToggleBtn = document.getElementById('export-toggle-headings-nav');
+  if (navContainer && navToggleBtn) {
+    navToggleBtn.addEventListener('click', function() { navContainer.classList.toggle('open'); });
+    navContainer.querySelectorAll('.nav-content a').forEach(function(a) {
+      a.addEventListener('click', function() { navContainer.classList.remove('open'); });
+    });
+  }
+})();` : ''}
 
 function initializeExportFilters() {
     const uniqueTabs = new Set(['all']); const uniqueSpeakers = new Set(['all']); const speakerCounts = {};
@@ -3680,6 +3698,21 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
 .heading-item.export.level-4 { font-size: 1.0em; margin-top: 8px; padding-bottom: 3px; color: #555; }
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
+${!isSingleFileHtml ? `
+.export-headings-nav { position: fixed; left: -200px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
+.export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
+.export-headings-nav .nav-content { display: flex; flex-direction: column; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 0 5px 5px; padding: 8px 10px; max-height: calc(100vh - 60px); overflow-y: auto; width: 200px; box-shadow: 2px 2px 8px rgba(0,0,0,0.15); }
+.export-headings-nav .nav-content h5 { margin: 0 0 6px 0; font-size: 0.95em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+.export-headings-nav .nav-content a { text-decoration: none; color: #337ab7; padding: 4px 0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; font-size: 0.92em; }
+.export-headings-nav .nav-content a:hover { color: #23527c; background: #eee; }
+.nav-level-1 { font-weight: bold; }
+.nav-level-2 { padding-left: 10px !important; }
+.nav-level-3 { padding-left: 20px !important; font-size: 0.95em; }
+.nav-level-4 { padding-left: 30px !important; font-size: 0.9em; }
+.nav-level-5 { padding-left: 40px !important; font-size: 0.85em; }
+.nav-level-6 { padding-left: 50px !important; font-size: 0.85em; }` : `
 .export-nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
 .export-nav-hamburger { position: fixed; top: 12px; left: 12px; z-index: 1001; background: #3498db; color: white; padding: 8px 11px; border-radius: 6px; cursor: pointer; font-size: 1.4em; line-height: 1; user-select: none; -webkit-user-select: none; box-shadow: 0 2px 8px rgba(0,0,0,0.30); }
 .export-nav-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(10,10,10,0.93); overflow-y: auto; padding: 60px 24px 32px; box-sizing: border-box; }
@@ -3693,7 +3726,7 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
 .nav-level-3 { padding-left: 32px !important; font-size: 0.95em; }
 .nav-level-4 { padding-left: 48px !important; font-size: 0.9em; }
 .nav-level-5 { padding-left: 64px !important; font-size: 0.85em; color: rgba(255,255,255,0.68); }
-.nav-level-6 { padding-left: 80px !important; font-size: 0.85em; color: rgba(255,255,255,0.55); }
+.nav-level-6 { padding-left: 80px !important; font-size: 0.85em; color: rgba(255,255,255,0.55); }`}
 @media (max-width: 768px) {
     body.export-body { padding: 0; font-size: ${Math.max(14, fontSize - 1)}px; margin-left: 0 !important; }
     .log-export-container { padding: 15px; margin: 10px; }
@@ -3713,7 +3746,9 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
     .inserted-image.export { max-width: 95%; max-height: 400px; }
     .image-caption.export { font-size: 0.85em; padding: 0 2%; }
     .tab-separator.export { margin: 20px 3%; }
-    .export-nav-hamburger { top: 10px; left: 10px; padding: 7px 10px; font-size: 1.3em; }
+    ${!isSingleFileHtml ? `.export-headings-nav { width: 180px; left: -180px; }
+    .export-headings-nav.open { left: 0px !important; }
+    .export-headings-nav button#export-toggle-headings-nav { padding: 8px 4px; }` : `.export-nav-hamburger { top: 10px; left: 10px; padding: 7px 10px; font-size: 1.3em; }`}
 }
 body.rr-site-light.export-body { background-color: ${backgroundColor} !important; color: rgba(20,14,8,0.90); }
 ${!isSingleFileHtml ? `
@@ -3806,6 +3841,11 @@ body.rr-site-dark .heading-item.export.level-4 { color: rgba(136,128,232,0.80) !
 body.rr-site-dark .heading-item.export.level-5 { color: rgba(136,128,232,0.60) !important; }
 body.rr-site-dark .heading-item.export.level-6 { color: rgba(136,128,232,0.44) !important; }
 body.rr-site-dark .all-mode-buttons button { background: rgba(255,255,255,0.10) !important; border-color: rgba(255,255,255,0.18) !important; color: #e8e8e8 !important; }
+body.rr-site-dark .export-headings-nav { background: rgba(0,0,0,0.72) !important; border-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav h5 { color: #e8e8e8 !important; border-bottom-color: rgba(255,255,255,0.14) !important; }
+body.rr-site-dark .export-headings-nav .nav-content a { color: #b0aeee !important; }
+body.rr-site-dark .export-headings-nav .nav-content a:hover { color: #cccaf8 !important; background: rgba(255,255,255,0.08) !important; }
+body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { background: #FF7A5C !important; color: #1a1030 !important; }
 ` : ''}
 `;
    }
