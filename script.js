@@ -3293,7 +3293,6 @@ ${navLinks}
 // iframe内かどうかを判定して背景透過を切り替える
 if (window.self !== window.top) { document.body.classList.add('rr-in-iframe'); }
 let currentExportTab = 'all'; let currentExportSpeaker = 'all'; let visibleTabsInAllModeExport = new Set();
-let lazyRevealObserver = null;
 const speakerSettings = ${speakerMapString}; const exportBaseTextColor = ${baseTextColorString}; const exportTextEdgeColor = ${textEdgeColorString};
 const exportLogTabsNav = document.getElementById('export-log-tabs'); const exportSpeakerFilter = document.getElementById('export-speaker-filter');
 const exportAllModeFilter = document.getElementById('export-all-mode-filter'); const exportLogDisplay = document.getElementById('export-log-display');
@@ -3337,16 +3336,6 @@ function initializeExportFilters() {
     if(exportAllModeFilter) populateExportAllModeFilter(uniqueTabs);
     handleExportTabChange(currentExportTab);
     applyExportFilters();
-    if (lazyRevealObserver) { lazyRevealObserver.disconnect(); lazyRevealObserver = null; }
-    var oldSentinel = document.getElementById('export-lazy-sentinel');
-    if (oldSentinel) oldSentinel.remove();
-    var sentinel = document.createElement('div');
-    sentinel.id = 'export-lazy-sentinel';
-    exportLogDisplay.appendChild(sentinel);
-    lazyRevealObserver = new IntersectionObserver(function(entries) {
-        if (entries[0].isIntersecting) lazyRevealMore();
-    }, { rootMargin: '200px' });
-    lazyRevealObserver.observe(sentinel);
 }
 
 function populateExportTabs(tabsSet) {
@@ -3430,7 +3419,6 @@ function applyExportFilters() {
         else { item.classList.add('hidden-log-item'); }
     });
     updateExportTabSeparators();
-    applyLazyReveal();
 }
 
 function updateExportTabSeparators() {
@@ -3454,37 +3442,6 @@ function updateExportTabSeparators() {
     });
 }
 
-function applyLazyReveal() {
-    exportLogDisplay.querySelectorAll('.lazy-hidden').forEach(function(el) { el.classList.remove('lazy-hidden'); });
-    var visibleItems = Array.from(exportLogDisplay.querySelectorAll('.log-item'))
-        .filter(function(el) { return !el.classList.contains('hidden-log-item') && !el.classList.contains('heading-item'); });
-    visibleItems.slice(80).forEach(function(el) {
-        el.classList.add('lazy-hidden');
-        var prev = el.previousElementSibling;
-        if (prev && prev.classList.contains('tab-separator')) prev.classList.add('lazy-hidden');
-    });
-}
-
-function lazyRevealMore() {
-    var hiddenItems = Array.from(exportLogDisplay.querySelectorAll('.log-item.lazy-hidden'));
-    if (hiddenItems.length === 0) return;
-    hiddenItems.slice(0, 80).forEach(function(el) {
-        var prev = el.previousElementSibling;
-        if (prev && prev.classList.contains('tab-separator') && prev.classList.contains('lazy-hidden')) prev.classList.remove('lazy-hidden');
-        el.classList.remove('lazy-hidden');
-    });
-    // センチネルがバッチ開示後もビューポート内に残っている場合、
-    // IntersectionObserverは再発火しないため次フレームで自力確認する
-    var remaining = exportLogDisplay.querySelectorAll('.log-item.lazy-hidden');
-    if (remaining.length > 0) {
-        requestAnimationFrame(function() {
-            var sentinelEl = document.getElementById('export-lazy-sentinel');
-            if (!sentinelEl) return;
-            var rect = sentinelEl.getBoundingClientRect();
-            if (rect.top < window.innerHeight + 200) lazyRevealMore();
-        });
-    }
-}
 ;
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { applyInitialStyles(); initializeExportFilters(); }); }
 else { applyInitialStyles(); initializeExportFilters(); }
@@ -3577,7 +3534,6 @@ color: var(--base-text-color);
 }
 .log-display.export { margin-top: 10px; }
 .hidden-log-item { display: none !important; }
-.lazy-hidden { display: none !important; }
 .log-item { margin-bottom: 16px; }
 .message-item.export { position: relative; }
 .message-container.export { display: flex; align-items: flex-start; }
