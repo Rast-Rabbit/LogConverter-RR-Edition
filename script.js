@@ -1503,7 +1503,7 @@
 
           // 削除ボタン
           const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'ml-auto text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex-shrink-0';
+          deleteBtn.className = 'expression-delete-btn ml-auto flex-shrink-0';
           deleteBtn.textContent = '削除';
           deleteBtn.title = `タブ「${tab}」とそのメッセージをすべて削除`;
           deleteBtn.addEventListener('click', () => {
@@ -1511,53 +1511,18 @@
               deleteTab(tab);
           });
 
-          // 他のタブに統合エリア
-          const mergeWrapper = document.createElement('div');
-          mergeWrapper.className = 'flex items-center gap-1 flex-shrink-0';
-
-          const mergeLabel = document.createElement('span');
-          mergeLabel.className = 'text-xs text-gray-600';
-          mergeLabel.textContent = '統合先:';
-
-          const mergeSelect = document.createElement('select');
-          mergeSelect.className = 'text-xs p-1 border border-gray-300 rounded-md shadow-sm';
-          const otherTabs = tabs.filter(t => t !== tab);
-          if (otherTabs.length === 0) {
-              const placeholder = document.createElement('option');
-              placeholder.value = '';
-              placeholder.textContent = '(他のタブなし)';
-              mergeSelect.appendChild(placeholder);
-              mergeSelect.disabled = true;
-          } else {
-              otherTabs.forEach(t => {
-                  const opt = document.createElement('option');
-                  opt.value = t;
-                  opt.textContent = t;
-                  mergeSelect.appendChild(opt);
-              });
-          }
-
+          // 統合ボタン（モーダルを開く）
           const mergeBtn = document.createElement('button');
-          mergeBtn.className = 'text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex-shrink-0';
-          mergeBtn.textContent = '統合';
-          mergeBtn.disabled = otherTabs.length === 0;
-          mergeBtn.title = `このタブのメッセージを選択したタブに移動し、このタブを削除`;
-          mergeBtn.addEventListener('click', () => {
-              const toTab = mergeSelect.value;
-              if (!toTab) return;
-              if (!confirm(`タブ「${tab}」のメッセージをすべてタブ「${toTab}」に統合します。\n元のタブ「${tab}」は削除されます。よろしいですか？`)) return;
-              mergeTab(tab, toTab);
-          });
-
-          mergeWrapper.appendChild(mergeLabel);
-          mergeWrapper.appendChild(mergeSelect);
-          mergeWrapper.appendChild(mergeBtn);
+          mergeBtn.className = 'text-xs px-2 py-1 border border-orange-400 text-orange-600 rounded hover:bg-orange-50 flex-shrink-0';
+          mergeBtn.textContent = '他のタブに統合…';
+          mergeBtn.title = `このタブのメッセージを別のタブに移動し、このタブを削除`;
+          mergeBtn.addEventListener('click', () => openMergeTabModal(tab));
 
           row.appendChild(nameSpan);
           row.appendChild(label);
           row.appendChild(alignSelect);
           row.appendChild(deleteBtn);
-          row.appendChild(mergeWrapper);
+          row.appendChild(mergeBtn);
           fragment.appendChild(row);
       });
       tabSettingsDiv.appendChild(fragment);
@@ -1579,6 +1544,39 @@
       populateTabSettingsUI();
       populateSpeakerFilterUI();
       renderLog();
+  }
+
+  function openMergeTabModal(fromTab) {
+      const otherTabs = [...uniqueTabsFound].filter(t => t !== 'all' && t !== fromTab).sort((a, b) => a.localeCompare(b));
+      if (otherTabs.length === 0) {
+          alert('統合先となる他のタブが存在しません。');
+          return;
+      }
+      genericModalTitle.textContent = '他のタブに統合';
+      const optionsHtml = otherTabs
+          .map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+          .join('');
+      genericModalBody.innerHTML = `
+          <p class="text-sm text-gray-700 mb-3">
+              「<strong>${escapeHtml(fromTab)}</strong>」のメッセージをすべて以下のタブに統合します。<br>
+              元のタブ「${escapeHtml(fromTab)}」は削除されます。<br>
+              この操作は取り消せません。
+          </p>
+          <div class="modal-form-group">
+              <label for="merge-tab-target-select">統合先タブ:</label>
+              <select id="merge-tab-target-select" class="block w-full rounded-md border-gray-300 shadow-sm p-1.5 text-sm">
+                  ${optionsHtml}
+              </select>
+          </div>
+      `;
+      genericModalConfirmBtn.textContent = '統合する';
+      genericModalConfirmBtn.className = 'btn-danger';
+      genericModalConfirmBtn.onclick = () => {
+          const toTab = document.getElementById('merge-tab-target-select').value;
+          closeModal(genericModal);
+          mergeTab(fromTab, toTab);
+      };
+      openModal(genericModal);
   }
 
   function mergeTab(fromTab, toTab) {
