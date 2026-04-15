@@ -595,9 +595,6 @@
           renderLog();
 
           projectLoadInfoSpan.textContent = `プロジェクト読込完了: ${escapeHtml(file.name)}`;
-           const baseName = file.name.replace(PROJECT_FILE_EXTENSION, '');
-           exportHtmlTitleInput.value = logFileNameBase || baseName;
-           exportZipFilenameInput.value = logFileNameBase || baseName;
            success = true;
       } catch (error) { errorMessage = error.message || 'プロジェクト読み込みエラー'; success = false; }
       finally {
