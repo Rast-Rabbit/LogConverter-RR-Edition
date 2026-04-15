@@ -326,9 +326,15 @@
                       forceNarration: false,
                       isNew: false
                   };
+                  // デフォルトアイコンをBlobとしてuploadedFilesに登録（saveProject/エクスポートで参照される）
+                  if (charData.defaultIcon) {
+                      uploadedFiles[name] = await fetch(charData.defaultIcon).then(r => r.blob());
+                  }
               } else {
                   if (!characterSettings[name].icon && charData.defaultIcon) {
                       characterSettings[name].icon = charData.defaultIcon;
+                      const uploadKey = characterSettings[name].isNew ? `newchar_${name}` : name;
+                      uploadedFiles[uploadKey] = await fetch(charData.defaultIcon).then(r => r.blob());
                   }
                   if (!characterSettings[name].color || characterSettings[name].color === '#000000') {
                       characterSettings[name].color = charData.color;
@@ -338,6 +344,8 @@
               for (const [, expInfo] of charData.expressionsByHash) {
                   if (expInfo.dataUrl && !setting.expressions[expInfo.label]) {
                       setting.expressions[expInfo.label] = expInfo.dataUrl;
+                      const expKey = `exp_${name}_${expInfo.label}`;
+                      uploadedFiles[expKey] = await fetch(expInfo.dataUrl).then(r => r.blob());
                   }
               }
           }
