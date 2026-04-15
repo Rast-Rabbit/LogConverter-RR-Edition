@@ -9,3 +9,7 @@ dark-theme-preview.html
 dark_preview.html
 sample.html
 sample2.html
+
+# ローカル検証用ファイル
+.input/
+KNOWLEDGE.md
