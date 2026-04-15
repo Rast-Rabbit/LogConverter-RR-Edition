@@ -61,6 +61,7 @@
 
   // --- DOM Elements ---
   const cocofoliaFileInput = document.getElementById('cocofolia-log-input');
+  const udonariumFileInput = document.getElementById('udonarium-log-input');
   const tekeyFileInput = document.getElementById('tekey-log-input');
   const projectLoadInput = document.getElementById('project-load-input');
   const fileInfoSpan = document.getElementById('file-info');
@@ -248,6 +249,7 @@
           resetAppState();
       }
       if (cocofoliaFileInput) cocofoliaFileInput.value = null;
+      if (udonariumFileInput) udonariumFileInput.value = null;
       if (tekeyFileInput) tekeyFileInput.value = null;
       resetCustomizationDefaults();
       updateCustomizationUI();
@@ -286,6 +288,200 @@
       } catch (error) { errorMessage = error.message || '不明なエラー'; success = false; }
       finally { endFileProcessing(file, success, errorMessage); }
   }
+
+  // ==================== ユドナリウムZIPインポート ====================
+
+  async function handleUdonariumFileSelect(event) {
+      const file = event.target.files?.[0];
+      if (!file) { fileInfoSpan.textContent = 'ファイルが選択されていません'; return; }
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+          alert('ユドナリウムのZIPファイルを選択してください。');
+          fileInfoSpan.textContent = 'ZIPファイルを選択してください';
+          event.target.value = null; return;
+      }
+      if (!startFileProcessing(file, "ユドナリウム")) { event.target.value = null; return; }
+      let success = false; let errorMessage = '';
+      try {
+          const { messages, characterDataByName, imagePosToExpLabel } = await parseUdonariumZip(file);
+
+          // キャラクター設定を事前投入（アイコン・表情差分）
+          for (const [name, charData] of characterDataByName) {
+              if (!characterSettings[name]) {
+                  characterSettings[name] = {
+                      displayName: name,
+                      icon: charData.images[0]?.dataUrl || null,
+                      expressions: {},
+                      alignment: 'left',
+                      color: charData.colors[0] || '#000000',
+                      customTextColor: null,
+                      forceNarration: false,
+                      isNew: false
+                  };
+              } else if (!characterSettings[name].icon && charData.images[0]?.dataUrl) {
+                  characterSettings[name].icon = charData.images[0].dataUrl;
+                  characterSettings[name].color = characterSettings[name].color || charData.colors[0] || '#000000';
+              }
+              const setting = characterSettings[name];
+              charData.images.forEach((img, i) => {
+                  if (i > 0 && img.dataUrl) {
+                      const label = img.label || `表情${i}`;
+                      if (!setting.expressions[label]) setting.expressions[label] = img.dataUrl;
+                  }
+              });
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 50));
+          initializeAfterParse(messages);
+
+          // imagePos に基づいて iconKey を後付け設定
+          displayLogData.forEach(item => {
+              if (item.type !== 'message' || item._udonariumImagePos === undefined || item._udonariumImagePos === 0) return;
+              const posMap = imagePosToExpLabel[item.speaker];
+              if (!posMap) return;
+              const expLabel = posMap[item._udonariumImagePos];
+              if (expLabel && characterSettings[item.speaker]?.expressions?.[expLabel]) {
+                  item.iconKey = expLabel;
+              }
+          });
+          displayLogData.forEach(item => { delete item._udonariumImagePos; });
+          renderLog();
+
+          success = true;
+      } catch (error) { errorMessage = error.message || '不明なエラー'; success = false; }
+      finally { endFileProcessing(file, success, errorMessage); }
+  }
+
+  // バリアント判別
+  function detectUdonariumVariant(zip) {
+      if (zip.files['fly_data.xml'])  return 'fly';
+      if (zip.files['imagetag.xml'])  return 'lily';
+      if (zip.files['data.xml'])      return 'standard';
+      return null;
+  }
+
+  function getUdonariumXmlFilenames(variant) {
+      if (variant === 'fly') return { data: 'fly_data.xml', chat: 'fly_chat.xml' };
+      return { data: 'data.xml', chat: 'chat.xml' };
+  }
+
+  // ZIP内の全画像を base64 DataURL に変換してキャッシュ
+  async function buildUdonariumImageCache(zip) {
+      const cache = new Map();
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+      for (const [filename, zipObj] of Object.entries(zip.files)) {
+          if (zipObj.dir) continue;
+          const basename = filename.split('/').pop();
+          const lower = basename.toLowerCase();
+          const ext = imageExts.find(e => lower.endsWith('.' + e));
+          if (!ext) continue;
+          const hash = basename.replace(/\.[^.]+$/, '');
+          const base64 = await zipObj.async('base64');
+          cache.set(hash, `data:image/${ext};base64,${base64}`);
+      }
+      return cache;
+  }
+
+  // data.xml からキャラクターマップ構築
+  function buildUdonariumCharacterMap(dataDoc, imageCache) {
+      const byName = new Map();
+      if (!dataDoc) return byName;
+      for (const charEl of dataDoc.querySelectorAll('character')) {
+          const nameEl = charEl.querySelector('data[name="character"] > data[name="common"] > data[name="name"]');
+          if (!nameEl) continue;
+          const name = nameEl.textContent.trim();
+          if (!name) continue;
+
+          const images = [];
+          const imageSection = charEl.querySelector('data[name="character"] > data[name="image"]');
+          if (imageSection) {
+              for (const imgEl of imageSection.querySelectorAll(':scope > data[type="image"][name="imageIdentifier"]')) {
+                  const hash = imgEl.textContent.trim();
+                  images.push({
+                      hash,
+                      label: imgEl.getAttribute('currentValue') || null,
+                      dataUrl: imageCache.get(hash) || null
+                  });
+              }
+          }
+
+          const colors = [];
+          for (let i = 0; i < 12; i++) {
+              const c = charEl.getAttribute(`chatColorCode.${i}`);
+              if (c) colors.push(c); else break;
+          }
+
+          byName.set(name, { images, colors });
+      }
+      return byName;
+  }
+
+  // メインパーサー
+  async function parseUdonariumZip(file) {
+      const zip = await window.JSZip.loadAsync(file);
+      const variant = detectUdonariumVariant(zip);
+      if (!variant) throw new Error('ユドナリウムのZIPファイルではありません（data.xml / fly_data.xml が見つかりません）。');
+      const { data: dataFilename, chat: chatFilename } = getUdonariumXmlFilenames(variant);
+
+      const chatXmlStr = await zip.files[chatFilename]?.async('string');
+      if (!chatXmlStr) throw new Error(`${chatFilename} が見つかりませんでした。`);
+      const dataXmlStr = await zip.files[dataFilename]?.async('string');
+
+      const parser = new DOMParser();
+      const chatDoc = parser.parseFromString(chatXmlStr, 'text/xml');
+      const dataDoc = dataXmlStr ? parser.parseFromString(dataXmlStr, 'text/xml') : null;
+
+      const imageCache = await buildUdonariumImageCache(zip);
+      const characterDataByName = buildUdonariumCharacterMap(dataDoc, imageCache);
+
+      // imagePos → 表情ラベル マップ構築
+      const imagePosToExpLabel = {};
+      for (const [name, charData] of characterDataByName) {
+          imagePosToExpLabel[name] = {};
+          charData.images.forEach((img, i) => {
+              imagePosToExpLabel[name][i] = (i === 0) ? 'default' : (img.label || `表情${i}`);
+          });
+      }
+
+      // chat タブ名マップ構築
+      const tabNameMap = new Map();
+      for (const tabEl of chatDoc.querySelectorAll('chat-tab')) {
+          const tabName = tabEl.getAttribute('name') || 'メインタブ';
+          tabNameMap.set(tabEl, tabName);
+      }
+
+      // チャットメッセージ収集（全タブ）
+      const rawMessages = [];
+      for (const tabEl of chatDoc.querySelectorAll('chat-tab')) {
+          const tabName = tabNameMap.get(tabEl) || 'メインタブ';
+          for (const node of tabEl.querySelectorAll(':scope > chat')) {
+              if (node.getAttribute('tag') === 'system') continue;
+              const name  = node.getAttribute('name') || '不明';
+              const color = node.getAttribute('messColor') || '#000000';
+              const ts    = parseInt(node.getAttribute('timestamp') || '0', 10);
+              const pos   = parseInt(node.getAttribute('imagePos')  || '0', 10);
+              const text  = node.textContent || '';
+              if (!text.trim()) continue;
+              rawMessages.push({ name, color, ts, pos, tab: tabName, text });
+          }
+      }
+
+      // timestamp 昇順にソート（複数タブ統合）
+      rawMessages.sort((a, b) => a.ts - b.ts);
+
+      const messages = rawMessages.map(m => ({
+          type: 'message',
+          id: generateUniqueId('udon'),
+          tab: m.tab,
+          speaker: m.name,
+          color: m.color,
+          message: escapeHtml(m.text).replace(/\n/g, '<br>'),
+          _udonariumImagePos: m.pos
+      }));
+
+      return { messages, characterDataByName, imagePosToExpLabel };
+  }
+
+  // ==================== / ユドナリウムZIPインポート ====================
 
   async function handleProjectLoadFile(event) {
       if (isProcessingFile) { console.warn("Processing already in progress."); event.target.value = null; return; }
@@ -386,7 +582,7 @@
        disableControls(); updateHeadingsNav(); closeHeadingsNav();
        if (iconChangeInput) iconChangeInput.value = null; if (insertImageInput) insertImageInput.value = null;
        if (backgroundImageInput) backgroundImageInput.value = null;
-       if (cocofoliaFileInput) cocofoliaFileInput.value = null; if (tekeyFileInput) tekeyFileInput.value = null; if (projectLoadInput) projectLoadInput.value = null;
+       if (cocofoliaFileInput) cocofoliaFileInput.value = null; if (udonariumFileInput) udonariumFileInput.value = null; if (tekeyFileInput) tekeyFileInput.value = null; if (projectLoadInput) projectLoadInput.value = null;
        closeIconDropdown(); closeModal(genericModal);
   }
 
@@ -3248,6 +3444,7 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
       try { localStorage.removeItem(LOCALSTORAGE_CUSTOMIZATION_KEY); } catch(_) {}
       resetCustomizationDefaults(); updateCustomizationUI();
       cocofoliaFileInput.addEventListener('change', handleCocofoliaFileSelect);
+      if (udonariumFileInput) udonariumFileInput.addEventListener('change', handleUdonariumFileSelect);
       tekeyFileInput.addEventListener('change', handleTekeyFileSelect);
       projectLoadInput.addEventListener('change', handleProjectLoadFile);
       settingsTabButton.addEventListener('click', () => switchSettingsTab('settings'));
