@@ -76,8 +76,10 @@
   const saveProjectButton = document.getElementById('save-project-button');
   const loadingOverlay = document.getElementById('loading-overlay');
   const settingsTabButton = document.getElementById('tab-btn-settings');
+  const characterTabButton = document.getElementById('tab-btn-character');
   const customizeTabButton = document.getElementById('tab-btn-customize');
-  const settingsPanel = document.getElementById('settings-panel-settings');
+  const settingsPanel = document.getElementById('settings-panel-tab');
+  const characterPanel = document.getElementById('settings-panel-character');
   const customizePanel = document.getElementById('settings-panel-customize');
   const normalColorInput = document.getElementById('bubble-normal-color');
   const rightBubbleColorInput = document.getElementById('bubble-right-color');
@@ -3610,7 +3612,8 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
       if (udonariumFileInput) udonariumFileInput.addEventListener('change', handleUdonariumFileSelect);
       tekeyFileInput.addEventListener('change', handleTekeyFileSelect);
       projectLoadInput.addEventListener('change', handleProjectLoadFile);
-      settingsTabButton.addEventListener('click', () => switchSettingsTab('settings'));
+      settingsTabButton.addEventListener('click', () => switchSettingsTab('tab'));
+      characterTabButton.addEventListener('click', () => switchSettingsTab('character'));
       customizeTabButton.addEventListener('click', () => switchSettingsTab('customize'));
       resetCustomizationButton.addEventListener('click', resetCustomization);
       logTabsNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) handleTabChange(e.target.dataset.tab); });
@@ -3673,14 +3676,20 @@ body.rr-site-light.export-body { background-color: ${backgroundColor} !important
       });
       refreshColorSwatches();
 
-      switchSettingsTab('settings'); hideLoading(); disableControls(); updateHeadingsNav();
+      switchSettingsTab('tab'); hideLoading(); disableControls(); updateHeadingsNav();
   }
 
   function switchSettingsTab(tabName) {
-      const panels = [settingsPanel, customizePanel]; const buttons = [settingsTabButton, customizeTabButton];
-      panels.forEach(panel => panel.classList.add('hidden')); buttons.forEach(button => { button.classList.remove('border-indigo-500', 'text-indigo-600'); button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'); button.removeAttribute('aria-current'); });
-      let activePanel; let activeButton; if (tabName === 'settings') { activePanel = settingsPanel; activeButton = settingsTabButton; } else if (tabName === 'customize') { activePanel = customizePanel; activeButton = customizeTabButton; }
-      if (activePanel) activePanel.classList.remove('hidden'); if (activeButton) { activeButton.classList.add('border-indigo-500', 'text-indigo-600'); activeButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'); activeButton.setAttribute('aria-current', 'page'); }
+      const panels = [settingsPanel, characterPanel, customizePanel];
+      const buttons = [settingsTabButton, characterTabButton, customizeTabButton];
+      panels.forEach(panel => panel.classList.add('hidden'));
+      buttons.forEach(button => { button.classList.remove('border-indigo-500', 'text-indigo-600'); button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'); button.removeAttribute('aria-current'); });
+      let activePanel; let activeButton;
+      if (tabName === 'tab') { activePanel = settingsPanel; activeButton = settingsTabButton; }
+      else if (tabName === 'character') { activePanel = characterPanel; activeButton = characterTabButton; }
+      else if (tabName === 'customize') { activePanel = customizePanel; activeButton = customizeTabButton; }
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (activeButton) { activeButton.classList.add('border-indigo-500', 'text-indigo-600'); activeButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'); activeButton.setAttribute('aria-current', 'page'); }
   }
 
   function applyTheme(theme) {

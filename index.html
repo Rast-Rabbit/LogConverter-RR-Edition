@@ -86,22 +86,24 @@
         <div class="mb-6">
              <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                    <button id="tab-btn-settings" data-tab-target="settings" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600" aria-current="page">タブ・キャラクター設定</button>
+                    <button id="tab-btn-settings" data-tab-target="tab" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600" aria-current="page">タブ設定</button>
+                    <button id="tab-btn-character" data-tab-target="character" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">キャラクター設定</button>
                     <button id="tab-btn-customize" data-tab-target="customize" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">表示カスタマイズ</button>
                 </nav>
             </div>
 
-            <div id="settings-panel-settings" class="mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-settings">
-                <div class="mb-5">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-base font-semibold text-gray-700">タブ設定:</h3>
-                        <button id="add-new-tab-button" class="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600">新規タブ追加</button>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-2">タブごとにチャットの表示方向（左/右）を設定します。</p>
-                    <div id="tab-settings-ui" class="border rounded-md p-3 bg-white shadow-sm"><p class="text-gray-500 italic text-sm">ログファイルまたはプロジェクトファイルを読み込むと表示されます。</p></div>
+            <div id="settings-panel-tab" class="mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-settings">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-base font-semibold text-gray-700">タブ設定</h3>
+                    <button id="add-new-tab-button" class="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600">新規タブ追加</button>
                 </div>
+                <p class="text-sm text-gray-600 mb-2">タブごとにチャットの表示方向（左/右）を設定します。</p>
+                <div id="tab-settings-ui" class="border rounded-md p-3 bg-white shadow-sm"><p class="text-gray-500 italic text-sm">ログファイルまたはプロジェクトファイルを読み込むと表示されます。</p></div>
+            </div>
+
+            <div id="settings-panel-character" class="hidden mt-4 p-4 border rounded-lg bg-gray-50" role="tabpanel" aria-labelledby="tab-btn-character">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-base font-semibold text-gray-700">キャラクター設定:</h3>
+                    <h3 class="text-base font-semibold text-gray-700">キャラクター設定</h3>
                     <button id="add-new-character-button" class="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600">新規キャラクター追加</button>
                 </div>
                 <p class="text-sm text-gray-600 mb-4">ログから検出された発言者です。表示名/アイコン/テーマ色/文字色/表情差分などを設定してください。</p>
