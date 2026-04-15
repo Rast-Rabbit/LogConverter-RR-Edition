@@ -2698,6 +2698,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           const projectData = {
               fileFormatVersion: PROJECT_FILE_FORMAT_VERSION, toolVersion: APP_VERSION, createdAt: new Date().toISOString(),
               logFileNameBase: logFileNameBase, characterSettings: {},
+              exportHtmlTitle: exportHtmlTitleInput.value.trim() || logFileNameBase,
+              exportZipFilename: exportZipFilenameInput.value.trim() || logFileNameBase,
               customizationSettings: { ...customizationSettings },
               tabSettings: { ...tabSettings },
               displayLogData: [], uploadedFileManifest: {}, nextUniqueId: nextUniqueId,
@@ -2783,6 +2785,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       try { projectData = JSON.parse(projectDataJson); } catch (e) { throw new Error(`${PROJECT_DATA_FILENAME} 解析エラー: ${e.message}`); }
 
       logFileNameBase = projectData.logFileNameBase || 'loaded_project';
+      exportHtmlTitleInput.value = projectData.exportHtmlTitle || logFileNameBase;
+      exportZipFilenameInput.value = projectData.exportZipFilename || logFileNameBase;
       const defaultCustomization = {
           normalBubbleColor: '#ffffff', darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
           rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: 'rgba(200,240,120,0.18)',
