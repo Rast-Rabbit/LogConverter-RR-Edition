@@ -151,19 +151,22 @@
   function escapeHtml(unsafe) { if (typeof unsafe !== 'string') return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 
   // ZIP・HTML出力時のみ適用するマークダウン変換
-  // エスケープ: \| \** \~~ で変換を抑制
+  // エスケープ: \| \** \~~ \[ で変換を抑制
   function parseMarkdownForExport(text) {
       if (!text) return text;
       return text
-          .replace(/\\\|/g,   '\x01PIPE\x01')
-          .replace(/\\\*\*/g, '\x01DSTR\x01')
-          .replace(/\\~~/g,   '\x01DTLD\x01')
+          .replace(/\\\|/g,    '\x01PIPE\x01')
+          .replace(/\\\*\*/g,  '\x01DSTR\x01')
+          .replace(/\\~~/g,    '\x01DTLD\x01')
+          .replace(/\\\[/g,    '\x01LBRK\x01')
           .replace(/\|([^《\n]+?)《([^》\n]+?)》/g, '<ruby>$1<rt>$2</rt></ruby>')
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/~~(.+?)~~/g, '<del>$1</del>')
+          .replace(/\[([^\]\n]+?)\]\((https?:\/\/[^\)\n]+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
           .replace(/\x01PIPE\x01/g, '|')
           .replace(/\x01DSTR\x01/g, '**')
-          .replace(/\x01DTLD\x01/g, '~~');
+          .replace(/\x01DTLD\x01/g, '~~')
+          .replace(/\x01LBRK\x01/g, '[');
   }
 
   function escapeCssSelector(str) { if (!str) return ''; return str.replace(/([!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~])/g, '\\$1'); }
@@ -311,6 +314,7 @@
 
           // キャラクター設定を事前投入（チャットベースで構築済みのデータを適用）
           for (const [name, charData] of characterDataByName) {
+              if (name === 'システム') continue; // 後で固定設定を投入するのでスキップ
               if (!characterSettings[name]) {
                   characterSettings[name] = {
                       displayName: name,
@@ -337,6 +341,18 @@
                   }
               }
           }
+
+          // システムメッセージ専用のキャラクター設定（常に地の文・アイコンなし・デフォルト色）
+          characterSettings['システム'] = {
+              displayName: 'システム',
+              icon: null,
+              expressions: {},
+              alignment: 'left',
+              color: '#000000',
+              customTextColor: null,
+              forceNarration: true,
+              isNew: false
+          };
 
           await new Promise(resolve => setTimeout(resolve, 50));
           initializeAfterParse(messages);
@@ -441,8 +457,8 @@
       for (const tabEl of chatDoc.querySelectorAll('chat-tab')) {
           const tabName = tabEl.getAttribute('name') || 'メインタブ';
           for (const node of tabEl.querySelectorAll(':scope > chat')) {
-              if (node.getAttribute('tag') === 'system') continue;
-              const name    = node.getAttribute('name') || '不明';
+              const isSystem = node.getAttribute('tag') === 'system';
+              const name    = isSystem ? 'システム' : (node.getAttribute('name') || '不明');
               const color   = node.getAttribute('messColor') || '#000000';
               const ts      = parseInt(node.getAttribute('timestamp') || '0', 10);
               const imageId = node.getAttribute('imageIdentifier') || '';
@@ -3147,9 +3163,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                   if (finalDisplayMode === 'narration') {
                       logBodyContent += `
 <div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
-  <div class="narration-container export" style="${textStyle}">
-      <span class="narration-tab">[${escapeHtml(item.tab || 'main')}]</span><span class="narration-speaker">${escapeHtml(speakerName)}:</span> <span class="narration-message">${parseMarkdownForExport(item.message)}</span>
-  </div>
+  <div class="narration-container export" style="${textStyle}">${parseMarkdownForExport(item.message)}</div>
 </div>\n`;
                   } else {
                       logBodyContent += `
@@ -3513,7 +3527,7 @@ color: var(--base-text-color);
 .log-item { margin-bottom: 16px; }
 .message-item.export { position: relative; }
 .message-container.export { display: flex; align-items: flex-start; }
-.narration-container.export { padding: 2px 4px; line-height: inherit; }
+.narration-container.export { padding: 2px 4px 2px calc(var(--icon-size) + 12px); line-height: inherit; }
 
 .message-container.export.align-right { flex-direction: row-reverse; }
 .message-container.export.align-right .icon-container.export { margin-left: 12px; margin-right: 0; }
@@ -3610,6 +3624,7 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
     .tab-nav.export { justify-content: center; }
     .speaker-filter.export { width: 100%; }
     .icon-container.export { width: ${responsiveIconSize}px; height: ${responsiveIconSize}px; margin-right: 10px; }
+    .narration-container.export { padding-left: calc(${responsiveIconSize}px + 10px); }
     .icon-placeholder.export { line-height: ${responsivePlaceholderLineHeight}px; font-size: ${responsivePlaceholderFontSize}px; }
     .bubble.export { padding: 8px 12px; }
     .bubble.export.bubble-left::before { top: 8px; left: -7px; border-width: 7px 9px 7px 0;}
