@@ -302,48 +302,53 @@
       if (!startFileProcessing(file, "ユドナリウム")) { event.target.value = null; return; }
       let success = false; let errorMessage = '';
       try {
-          const { messages, characterDataByName, imagePosToExpLabel } = await parseUdonariumZip(file);
+          const { messages, characterDataByName } = await parseUdonariumZip(file);
 
-          // キャラクター設定を事前投入（アイコン・表情差分）
+          // キャラクター設定を事前投入（チャットベースで構築済みのデータを適用）
           for (const [name, charData] of characterDataByName) {
               if (!characterSettings[name]) {
                   characterSettings[name] = {
                       displayName: name,
-                      icon: charData.images[0]?.dataUrl || null,
+                      icon: charData.defaultIcon,
                       expressions: {},
                       alignment: 'left',
-                      color: charData.colors[0] || '#000000',
+                      color: charData.color,
                       customTextColor: null,
                       forceNarration: false,
                       isNew: false
                   };
-              } else if (!characterSettings[name].icon && charData.images[0]?.dataUrl) {
-                  characterSettings[name].icon = charData.images[0].dataUrl;
-                  characterSettings[name].color = characterSettings[name].color || charData.colors[0] || '#000000';
+              } else {
+                  if (!characterSettings[name].icon && charData.defaultIcon) {
+                      characterSettings[name].icon = charData.defaultIcon;
+                  }
+                  if (!characterSettings[name].color || characterSettings[name].color === '#000000') {
+                      characterSettings[name].color = charData.color;
+                  }
               }
               const setting = characterSettings[name];
-              charData.images.forEach((img, i) => {
-                  if (i > 0 && img.dataUrl) {
-                      const label = img.label || `表情${i}`;
-                      if (!setting.expressions[label]) setting.expressions[label] = img.dataUrl;
+              for (const [, expInfo] of charData.expressionsByHash) {
+                  if (expInfo.dataUrl && !setting.expressions[expInfo.label]) {
+                      setting.expressions[expInfo.label] = expInfo.dataUrl;
                   }
-              });
+              }
           }
 
           await new Promise(resolve => setTimeout(resolve, 50));
           initializeAfterParse(messages);
 
-          // imagePos に基づいて iconKey を後付け設定
+          // imageIdentifier に基づいて iconKey を後付け設定
           displayLogData.forEach(item => {
-              if (item.type !== 'message' || item._udonariumImagePos === undefined || item._udonariumImagePos === 0) return;
-              const posMap = imagePosToExpLabel[item.speaker];
-              if (!posMap) return;
-              const expLabel = posMap[item._udonariumImagePos];
-              if (expLabel && characterSettings[item.speaker]?.expressions?.[expLabel]) {
-                  item.iconKey = expLabel;
+              if (item.type !== 'message') return;
+              const imageId = item._udonariumImageId;
+              delete item._udonariumImageId;
+              if (!imageId || imageId === 'none_icon') return; // 'default' のまま
+              const charData = characterDataByName.get(item.speaker);
+              if (!charData || imageId === charData.defaultHash) return; // デフォルトアイコンはそのまま
+              const expInfo = charData.expressionsByHash.get(imageId);
+              if (expInfo?.label && characterSettings[item.speaker]?.expressions?.[expInfo.label]) {
+                  item.iconKey = expInfo.label;
               }
           });
-          displayLogData.forEach(item => { delete item._udonariumImagePos; });
           renderLog();
 
           success = true;
@@ -381,41 +386,35 @@
       return cache;
   }
 
-  // data.xml からキャラクターマップ構築
-  function buildUdonariumCharacterMap(dataDoc, imageCache) {
-      const byName = new Map();
-      if (!dataDoc) return byName;
+  // data.xml から「ハッシュ→ラベル」マップと「キャラ名→発言色」マップを構築
+  function buildUdonariumDataMaps(dataDoc) {
+      const hashToLabel  = new Map(); // hash → currentValue（表情差分名）
+      const charColorMap = new Map(); // name → chatColorCode.0
+      const charPos0Hash = new Map(); // name → imagePos=0 のハッシュ
+      if (!dataDoc) return { hashToLabel, charColorMap, charPos0Hash };
+
       for (const charEl of dataDoc.querySelectorAll('character')) {
           const nameEl = charEl.querySelector('data[name="character"] > data[name="common"] > data[name="name"]');
-          if (!nameEl) continue;
-          const name = nameEl.textContent.trim();
-          if (!name) continue;
+          const name = nameEl?.textContent.trim();
+          const color0 = charEl.getAttribute('chatColorCode.0');
+          if (name && color0) charColorMap.set(name, color0);
 
-          const images = [];
           const imageSection = charEl.querySelector('data[name="character"] > data[name="image"]');
-          if (imageSection) {
-              for (const imgEl of imageSection.querySelectorAll(':scope > data[type="image"][name="imageIdentifier"]')) {
-                  const hash = imgEl.textContent.trim();
-                  images.push({
-                      hash,
-                      label: imgEl.getAttribute('currentValue') || null,
-                      dataUrl: imageCache.get(hash) || null
-                  });
-              }
+          if (!imageSection) continue;
+          let isFirst = true;
+          for (const imgEl of imageSection.querySelectorAll(':scope > data[type="image"][name="imageIdentifier"]')) {
+              const hash  = imgEl.textContent.trim();
+              const label = imgEl.getAttribute('currentValue');
+              if (!hash) continue;
+              if (label && !hashToLabel.has(hash)) hashToLabel.set(hash, label);
+              if (isFirst && name && !charPos0Hash.has(name)) charPos0Hash.set(name, hash);
+              isFirst = false;
           }
-
-          const colors = [];
-          for (let i = 0; i < 12; i++) {
-              const c = charEl.getAttribute(`chatColorCode.${i}`);
-              if (c) colors.push(c); else break;
-          }
-
-          byName.set(name, { images, colors });
       }
-      return byName;
+      return { hashToLabel, charColorMap, charPos0Hash };
   }
 
-  // メインパーサー
+  // メインパーサー（チャットベースでキャラクター情報を構築）
   async function parseUdonariumZip(file) {
       const zip = await window.JSZip.loadAsync(file);
       const variant = detectUdonariumVariant(zip);
@@ -431,43 +430,84 @@
       const dataDoc = dataXmlStr ? parser.parseFromString(dataXmlStr, 'text/xml') : null;
 
       const imageCache = await buildUdonariumImageCache(zip);
-      const characterDataByName = buildUdonariumCharacterMap(dataDoc, imageCache);
+      const { hashToLabel, charColorMap, charPos0Hash } = buildUdonariumDataMaps(dataDoc);
 
-      // imagePos → 表情ラベル マップ構築
-      const imagePosToExpLabel = {};
-      for (const [name, charData] of characterDataByName) {
-          imagePosToExpLabel[name] = {};
-          charData.images.forEach((img, i) => {
-              imagePosToExpLabel[name][i] = (i === 0) ? 'default' : (img.label || `表情${i}`);
-          });
-      }
-
-      // chat タブ名マップ構築
-      const tabNameMap = new Map();
-      for (const tabEl of chatDoc.querySelectorAll('chat-tab')) {
-          const tabName = tabEl.getAttribute('name') || 'メインタブ';
-          tabNameMap.set(tabEl, tabName);
-      }
-
-      // チャットメッセージ収集（全タブ）
+      // ── Step 1: チャット全メッセージを収集 ──
       const rawMessages = [];
       for (const tabEl of chatDoc.querySelectorAll('chat-tab')) {
-          const tabName = tabNameMap.get(tabEl) || 'メインタブ';
+          const tabName = tabEl.getAttribute('name') || 'メインタブ';
           for (const node of tabEl.querySelectorAll(':scope > chat')) {
               if (node.getAttribute('tag') === 'system') continue;
-              const name  = node.getAttribute('name') || '不明';
-              const color = node.getAttribute('messColor') || '#000000';
-              const ts    = parseInt(node.getAttribute('timestamp') || '0', 10);
-              const pos   = parseInt(node.getAttribute('imagePos')  || '0', 10);
-              const text  = node.textContent || '';
+              const name    = node.getAttribute('name') || '不明';
+              const color   = node.getAttribute('messColor') || '#000000';
+              const ts      = parseInt(node.getAttribute('timestamp') || '0', 10);
+              const imageId = node.getAttribute('imageIdentifier') || '';
+              const text    = node.textContent || '';
               if (!text.trim()) continue;
-              rawMessages.push({ name, color, ts, pos, tab: tabName, text });
+              rawMessages.push({ name, color, ts, imageId, tab: tabName, text });
+          }
+      }
+      rawMessages.sort((a, b) => a.ts - b.ts);
+
+      // ── Step 2: 発言者ごとの imageIdentifier 使用統計を収集 ──
+      // speakerInfo: name → { imageIdCount: Map<hash, count>, firstColor }
+      const speakerInfo = new Map();
+      for (const msg of rawMessages) {
+          if (!speakerInfo.has(msg.name)) {
+              speakerInfo.set(msg.name, { imageIdCount: new Map(), firstColor: msg.color });
+          }
+          const si = speakerInfo.get(msg.name);
+          if (msg.imageId && msg.imageId !== 'none_icon') {
+              si.imageIdCount.set(msg.imageId, (si.imageIdCount.get(msg.imageId) || 0) + 1);
           }
       }
 
-      // timestamp 昇順にソート（複数タブ統合）
-      rawMessages.sort((a, b) => a.ts - b.ts);
+      // ── Step 3: 発言者ごとにキャラクターデータを構築 ──
+      // characterDataByName: name → { defaultHash, defaultIcon, expressionsByHash: Map<hash, {label, dataUrl}>, color }
+      const characterDataByName = new Map();
+      for (const [name, si] of speakerInfo) {
+          // デフォルトアイコン: data.xml の imagePos=0 ハッシュ優先、なければ最頻出
+          let defaultHash = charPos0Hash.get(name) || null;
+          if (!defaultHash || !si.imageIdCount.has(defaultHash)) {
+              defaultHash = null;
+              let maxCount = 0;
+              for (const [hash, count] of si.imageIdCount) {
+                  if (count > maxCount) { maxCount = count; defaultHash = hash; }
+              }
+          }
 
+          // 表情差分: デフォルト以外の全 imageIdentifier にラベルを割り当て
+          const expressionsByHash = new Map(); // hash → { label, dataUrl }
+          const usedLabels = new Set();
+          let autoCounter = 1;
+          for (const [hash] of si.imageIdCount) {
+              if (hash === defaultHash) continue;
+              let label = hashToLabel.get(hash) || null;
+              // ラベル重複回避
+              if (label && usedLabels.has(label)) {
+                  let n = 2;
+                  while (usedLabels.has(`${label}${n}`)) n++;
+                  label = `${label}${n}`;
+              }
+              if (!label) {
+                  do { label = `表情${autoCounter++}`; } while (usedLabels.has(label));
+              }
+              usedLabels.add(label);
+              expressionsByHash.set(hash, { label, dataUrl: imageCache.get(hash) || null });
+          }
+
+          // 色: data.xml の chatColorCode.0 優先、なければ最初の messColor
+          const color = charColorMap.get(name) || si.firstColor || '#000000';
+
+          characterDataByName.set(name, {
+              defaultHash,
+              defaultIcon: imageCache.get(defaultHash) || null,
+              expressionsByHash,
+              color
+          });
+      }
+
+      // ── Step 4: メッセージ配列を構築（iconKey 解決用に imageId を一時保持） ──
       const messages = rawMessages.map(m => ({
           type: 'message',
           id: generateUniqueId('udon'),
@@ -475,10 +515,10 @@
           speaker: m.name,
           color: m.color,
           message: escapeHtml(m.text).replace(/\n/g, '<br>'),
-          _udonariumImagePos: m.pos
+          _udonariumImageId: m.imageId
       }));
 
-      return { messages, characterDataByName, imagePosToExpLabel };
+      return { messages, characterDataByName };
   }
 
   // ==================== / ユドナリウムZIPインポート ====================
