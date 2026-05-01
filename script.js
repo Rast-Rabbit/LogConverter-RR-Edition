@@ -378,6 +378,10 @@
                       setting.expressions[expInfo.label] = expInfo.dataUrl;
                       const expKey = `exp_${name}_${expInfo.label}`;
                       uploadedFiles[expKey] = await fetch(expInfo.dataUrl).then(r => r.blob());
+                      if (!expressionAliasMap[name]) expressionAliasMap[name] = {};
+                      if (!expressionAliasMap[name][expInfo.label]) {
+                          expressionAliasMap[name][expInfo.label] = `emote_${nextExpressionAliasId++}`;
+                      }
                   }
               }
           }
@@ -552,7 +556,7 @@
               const komaHashSet = new Set(koma.allImages.map(i => i.hash));
               for (let i = 1; i < koma.allImages.length; i++) {
                   const { hash, label: rawLabel } = koma.allImages[i];
-                  if (!hash) continue;
+                  if (!hash || hash === 'none_icon') continue;
                   let label = rawLabel || null;
                   if (!label) {
                       do { label = `表情${autoCounter++}`; } while (usedLabels.has(label));
@@ -3137,7 +3141,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           setting.icon = setting.icon ? (imageDataUrlMap.get(setting.icon) || null) : null;
           if (setting.expressions) {
               for (const [expName, expPath] of Object.entries(setting.expressions)) {
-                  setting.expressions[expName] = expPath ? (imageDataUrlMap.get(expPath) || null) : null;
+                  if (expPath) {
+                      setting.expressions[expName] = imageDataUrlMap.get(expPath) || null;
+                  } else {
+                      delete setting.expressions[expName];
+                  }
               }
           }
       }
