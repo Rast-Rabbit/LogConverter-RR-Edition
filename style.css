@@ -137,20 +137,16 @@ body {
 }
 
 .bubble-right {
-    /* This class is added to a .bubble.bubble-left element */
     margin-left: auto;
     margin-right: 0;
-    /* calc(var(--icon-size, 64px) + 12px); */
-    background-color: var(--bubble-right-bg-color, var(--bubble-bg-color, #dcf8c6)) !important;
-    /* Use important if needed to override base .bubble-left */
+    background-color: var(--bubble-bg-color, #dcf8c6) !important;
 }
 
 .bubble-right::before {
     right: -8px !important;
-    /* Use important to override .bubble-left::before */
     left: auto !important;
     border-width: 8px 0 8px 10px !important;
-    border-color: transparent transparent transparent var(--bubble-right-arrow-color, var(--bubble-arrow-color, #dcf8c6)) !important;
+    border-color: transparent transparent transparent var(--bubble-arrow-color, #dcf8c6) !important;
 }
 
 
@@ -185,14 +181,9 @@ body {
     text-align: right;
 }
 
-/* Container aligns right for name, etc. */
 .message-container.align-right .speaker-name-default {
     text-align: right;
 }
-
-/* Speaker name aligns right */
-/* .bubble-left when under .align-right message-container will use .bubble-right styles due to JS applying --bubble-right-bg-color etc. */
-/* And CSS for .bubble-right::before should take precedence if .bubble-right class is also on the bubble */
 
 
 .icon-container {
