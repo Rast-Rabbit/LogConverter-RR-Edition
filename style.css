@@ -1257,19 +1257,14 @@ input:checked+.slider:before {
   outline-offset: -2px;
 }
 #log-display.bulk-move-active .message-item {
+  cursor: pointer;
   border-radius: 8px;
   transition: box-shadow 0.12s ease, background 0.12s ease;
 }
-/* バブル部分のみをクリック対象にする */
 #log-display.bulk-move-active .message-item * {
   pointer-events: none;
-  cursor: default;
 }
-#log-display.bulk-move-active .message-item .message-body {
-  pointer-events: auto;
-  cursor: pointer;
-}
-#log-display.bulk-move-active .message-item:not(.bm-selected):has(.message-body:hover) {
+#log-display.bulk-move-active .message-item:not(.bm-selected):hover {
   box-shadow: 0 0 0 2px #6366f1, 0 3px 10px rgba(99,102,241,0.18);
 }
 #log-display.bulk-move-active .message-item.bm-selected {
@@ -1351,7 +1346,7 @@ input:checked+.slider:before {
 body.rr-site-dark #log-display.bulk-move-active {
   outline-color: rgba(129,140,248,0.4);
 }
-body.rr-site-dark #log-display.bulk-move-active .message-item:not(.bm-selected):has(.message-body:hover) {
+body.rr-site-dark #log-display.bulk-move-active .message-item:not(.bm-selected):hover {
   box-shadow: 0 0 0 2px #818cf8, 0 3px 10px rgba(129,140,248,0.2);
 }
 body.rr-site-dark #log-display.bulk-move-active .message-item.bm-selected {

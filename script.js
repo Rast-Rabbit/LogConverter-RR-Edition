@@ -2797,7 +2797,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       banner.textContent = 'メッセージをクリックして選択 → メッセージ間をクリックして移動 | Escキーでキャンセル';
       logDisplayDiv.prepend(banner);
       _insertBulkMoveBars();
-      logDisplayDiv.addEventListener('click', _bulkMoveCaptureHandler, { capture: true });
+      logDisplayDiv.addEventListener('click',     _bulkMoveCaptureHandler, { capture: true });
+      logDisplayDiv.addEventListener('mousedown', _bulkMoveMousedownCapture, { capture: true });
       document.addEventListener('keydown', _bulkMoveKeydownHandler);
   }
 
@@ -2816,7 +2817,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           el.style.position = '';
       });
       logDisplayDiv.querySelectorAll('.bm-order-badge').forEach(el => el.remove());
-      logDisplayDiv.removeEventListener('click', _bulkMoveCaptureHandler, { capture: true });
+      logDisplayDiv.removeEventListener('click',     _bulkMoveCaptureHandler, { capture: true });
+      logDisplayDiv.removeEventListener('mousedown', _bulkMoveMousedownCapture, { capture: true });
       document.removeEventListener('keydown', _bulkMoveKeydownHandler);
   }
 
@@ -2844,9 +2846,14 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (!messageEl) return;
       e.stopPropagation();
       e.preventDefault();
-      // バブル（吹き出し）部分のクリックのみ選択トグル
-      if (e.target.closest('.message-body')) {
-          _toggleBulkMoveSelection(messageEl);
+      _toggleBulkMoveSelection(messageEl);
+  }
+  // mousedown をキャプチャして contenteditable フォーカスや各種リスナーを完全遮断
+  function _bulkMoveMousedownCapture(e) {
+      if (!bulkMoveMode) return;
+      if (e.target.closest('.message-item') || e.target.closest('.bm-insert-bar')) {
+          e.stopPropagation();
+          e.preventDefault();
       }
   }
 
