@@ -23,9 +23,38 @@
       backgroundImage: null,
       backgroundImageFileName: null,
       includeThemeToggle: false,           // ZIP出力に切り替えボタンを含めない（false=含める）
-      speakerAlignmentMode: false          // true=発言者ごとに表示方向を設定、false=タブごと
+      speakerAlignmentMode: false,          // true=発言者ごとに表示方向を設定、false=タブごと
+      customBubbleColors: [
+          { light: '#c6f8f8', dark: '#303044' },
+          { light: '#ffd6d6', dark: '#3a2020' }
+      ]
    };
   let currentTheme = 'light';
+
+  function getAlignmentOptions() {
+      const opts = [['left', '左'], ['right', '右']];
+      (customizationSettings.customBubbleColors || []).forEach((_, i) => {
+          opts.push([`left-custom-${i+1}`, `左（カスタム${i+1}）`]);
+          opts.push([`right-custom-${i+1}`, `右（カスタム${i+1}）`]);
+      });
+      return opts;
+  }
+  function isRightAlignment(alignment) {
+      return alignment === 'right' || (!!alignment && alignment.startsWith('right-custom-'));
+  }
+  function getBubbleColorForAlignment(alignment) {
+      const isDark = currentTheme === 'dark';
+      const m = alignment && alignment.match(/^(?:left|right)-custom-(\d+)$/);
+      if (m) {
+          const idx = parseInt(m[1]) - 1;
+          const custom = (customizationSettings.customBubbleColors || [])[idx];
+          if (custom) return isDark ? custom.dark : custom.light;
+      }
+      if (isRightAlignment(alignment))
+          return isDark ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
+      return isDark ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
+  }
+
    let currentTabFilter = 'all';
    let currentSpeakerFilter = 'all';
    let visibleTabsInAllMode = new Set();
@@ -924,7 +953,7 @@
           charAlignLabel.textContent = '表示方向:';
           const charAlignSelect = document.createElement('select');
           charAlignSelect.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
-          [['left', '左'], ['right', '右']].forEach(([val, text]) => {
+          getAlignmentOptions().forEach(([val, text]) => {
               const opt = document.createElement('option');
               opt.value = val; opt.textContent = text;
               if ((setting.alignment || 'left') === val) opt.selected = true;
@@ -1543,7 +1572,7 @@
           const alignSelect = document.createElement('select');
           alignSelect.className = 'text-sm p-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
           if (isSpeakerMode) alignSelect.classList.add('hidden');
-          [['left', '左'], ['right', '右']].forEach(([val, text]) => {
+          getAlignmentOptions().forEach(([val, text]) => {
               const option = document.createElement('option');
               option.value = val;
               option.textContent = text;
@@ -1835,16 +1864,10 @@
   function applyMessageBubbleStyle(messageBody, alignment) {
       if (!messageBody) return;
       messageBody.classList.remove('bubble-right');
-      if (alignment === 'right') {
-          messageBody.classList.add('bubble-right');
-          const rightColor = currentTheme === 'dark' ? customizationSettings.darkRightBubbleColor : customizationSettings.rightBubbleColor;
-          messageBody.style.setProperty('--bubble-bg-color', rightColor);
-          messageBody.style.setProperty('--bubble-arrow-color', rightColor);
-      } else {
-          const normalColor = currentTheme === 'dark' ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
-          messageBody.style.setProperty('--bubble-bg-color', normalColor);
-          messageBody.style.setProperty('--bubble-arrow-color', normalColor);
-      }
+      if (isRightAlignment(alignment)) messageBody.classList.add('bubble-right');
+      const color = getBubbleColorForAlignment(alignment);
+      messageBody.style.setProperty('--bubble-bg-color', color);
+      messageBody.style.setProperty('--bubble-arrow-color', color);
   }
 
   function updateMessageElementPresentation(messageElement, logItem) {
@@ -1857,7 +1880,7 @@
       const messageBody = messageElement.querySelector('.message-body');
       const toggleButton = messageElement.querySelector('.display-mode-toggle');
       messageElement.dataset.displayMode = state.currentDisplayMode;
-      if (messageContainer) messageContainer.classList.toggle('align-right', effectiveBubbleAlignment === 'right');
+      if (messageContainer) messageContainer.classList.toggle('align-right', isRightAlignment(effectiveBubbleAlignment));
 
       if (iconImg) {
           iconImg.src = state.currentIconSrc;
@@ -2630,7 +2653,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           backgroundImage: null,
           backgroundImageFileName: null,
           includeThemeToggle: false,
-          speakerAlignmentMode: false
+          speakerAlignmentMode: false,
+          customBubbleColors: [
+              { light: '#c6f8f8', dark: '#303044' },
+              { light: '#ffd6d6', dark: '#3a2020' }
+          ]
       };
       delete uploadedFiles[BACKGROUND_IMAGE_KEY];
   }
@@ -2670,6 +2697,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           }
        } catch (error) { console.error("Error updating customization UI:", error); }
        refreshColorSwatches();
+       renderCustomBubbleColorsUI();
    }
    function refreshColorSwatches() {
        [['dark-bg-color',            'dark-bg-color-swatch'],
@@ -2680,6 +2708,74 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
            if (input && swatch) swatch.style.setProperty('--swatch-color', input.value.trim() || 'transparent');
        });
    }
+   function renderCustomBubbleColorsUI() {
+       const list = document.getElementById('custom-bubble-colors-list');
+       if (!list) return;
+       list.innerHTML = '';
+       const colors = customizationSettings.customBubbleColors || [];
+       colors.forEach((c, i) => {
+           const row = document.createElement('div');
+           row.className = 'flex items-center gap-2 p-2 border border-gray-200 rounded';
+           row.innerHTML = `
+               <span class="text-xs text-gray-600 w-16 flex-shrink-0">カスタム${i+1}</span>
+               <label class="text-xs text-gray-500">ライト</label>
+               <input type="color" value="${c.light}" class="h-7 w-12 rounded border border-gray-300 cursor-pointer p-0.5" data-custom-idx="${i}" data-custom-mode="light">
+               <label class="text-xs text-gray-500">ダーク</label>
+               <input type="color" value="${c.dark}" class="h-7 w-12 rounded border border-gray-300 cursor-pointer p-0.5" data-custom-idx="${i}" data-custom-mode="dark">
+               <button class="ml-auto text-xs px-2 py-0.5 border border-red-400 text-red-500 rounded hover:bg-red-50" data-delete-custom="${i}">削除</button>`;
+           list.appendChild(row);
+       });
+       list.querySelectorAll('input[type="color"][data-custom-idx]').forEach(input => {
+           input.addEventListener('input', (e) => {
+               const idx = parseInt(e.target.dataset.customIdx);
+               const mode = e.target.dataset.customMode;
+               if (customizationSettings.customBubbleColors[idx]) {
+                   customizationSettings.customBubbleColors[idx][mode] = e.target.value;
+                   renderLog();
+               }
+           });
+       });
+       list.querySelectorAll('button[data-delete-custom]').forEach(btn => {
+           btn.addEventListener('click', (e) => {
+               const idx = parseInt(e.target.dataset.deleteCustom);
+               deleteCustomBubbleColor(idx);
+           });
+       });
+   }
+   function addCustomBubbleColor() {
+       if (!customizationSettings.customBubbleColors) customizationSettings.customBubbleColors = [];
+       customizationSettings.customBubbleColors.push({ light: '#ffffff', dark: '#2d2d2d' });
+       renderCustomBubbleColorsUI();
+       refreshAlignmentDropdowns();
+       renderLog();
+   }
+   function deleteCustomBubbleColor(idx) {
+       const colors = customizationSettings.customBubbleColors || [];
+       if (idx < 0 || idx >= colors.length) return;
+       const deletedKey1 = `left-custom-${idx+1}`;
+       const deletedKey2 = `right-custom-${idx+1}`;
+       colors.splice(idx, 1);
+       // 削除されたカスタム色を使っていたタブ/キャラを 'left' に戻し、それより後の番号を繰り上げ
+       const renum = (align) => {
+           if (align === deletedKey1 || align === deletedKey2) return 'left';
+           const m = align && align.match(/^(left|right)-custom-(\d+)$/);
+           if (m && parseInt(m[2]) > idx + 1) return `${m[1]}-custom-${parseInt(m[2]) - 1}`;
+           return align;
+       };
+       Object.keys(tabSettings).forEach(tab => {
+           if (tabSettings[tab]?.alignment) tabSettings[tab].alignment = renum(tabSettings[tab].alignment);
+       });
+       Object.keys(characterSettings).forEach(sp => {
+           if (characterSettings[sp]?.alignment) characterSettings[sp].alignment = renum(characterSettings[sp].alignment);
+       });
+       renderCustomBubbleColorsUI();
+       refreshAlignmentDropdowns();
+       renderLog();
+   }
+   function refreshAlignmentDropdowns() {
+       populateTabSettingsUI();
+       if (customizationSettings.speakerAlignmentMode) populateCharacterSettingsUI();
+   }
    function saveCustomization() { try { localStorage.setItem(LOCALSTORAGE_CUSTOMIZATION_KEY, JSON.stringify(customizationSettings)); } catch (error) { console.error("Error saving customization settings to LocalStorage:", error); } }
    function loadCustomization() {
       let loaded = null; try { const savedJson = localStorage.getItem(LOCALSTORAGE_CUSTOMIZATION_KEY); if (savedJson) loaded = JSON.parse(savedJson); } catch (error) { console.error("Error loading customization settings from LocalStorage:", error); localStorage.removeItem(LOCALSTORAGE_CUSTOMIZATION_KEY); }
@@ -2688,6 +2784,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           // rgba値が保存されていた場合は新デフォルトに移行
           if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
           if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#29342f';
+          if (!Array.isArray(customizationSettings.customBubbleColors)) customizationSettings.customBubbleColors = [{ light: '#c6f8f8', dark: '#303044' }, { light: '#ffd6d6', dark: '#3a2020' }];
       } else { resetCustomizationDefaults(); }
   }
 
@@ -2800,12 +2897,14 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           baseTextColor: '#333333', darkBaseTextColor: '#e8e8e8',
           textEdgeColor: '#ffffff', darkTextEdgeColor: 'transparent',
           backgroundImage: null, backgroundImageFileName: null, backgroundImagePath: null,
-          includeThemeToggle: false
+          includeThemeToggle: false,
+          customBubbleColors: [{ light: '#c6f8f8', dark: '#303044' }, { light: '#ffd6d6', dark: '#3a2020' }]
       };
       customizationSettings = { ...defaultCustomization, ...projectData.customizationSettings };
       if (typeof customizationSettings.textEdgeColor === 'undefined') customizationSettings.textEdgeColor = defaultCustomization.textEdgeColor;
       if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
       if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#29342f';
+      if (!Array.isArray(customizationSettings.customBubbleColors)) customizationSettings.customBubbleColors = [{ light: '#c6f8f8', dark: '#303044' }, { light: '#ffd6d6', dark: '#3a2020' }];
       if (typeof customizationSettings.backgroundImageFileName === 'undefined') customizationSettings.backgroundImageFileName = defaultCustomization.backgroundImageFileName;
 
       nextUniqueId = projectData.nextUniqueId || 0;
@@ -3208,9 +3307,15 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                       iconElHtml = `<img src="${iconSrc}" alt="${escapeHtml(speakerName)} (${iconKey})" class="icon export" style="border-color: ${iconBorderColor}; display: ${imageDisplay};" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
                   }
 
-                  const bubbleBgStyle = finalAlignment === 'right' ?
-                                         `--bubble-bg-color: ${rightBubbleColor}; --bubble-arrow-color: ${rightBubbleColor};` :
-                                         `--bubble-bg-color: ${normalBubbleColor}; --bubble-arrow-color: ${normalBubbleColor};`;
+                  const _customColors = currentCustomization.customBubbleColors || [];
+                  const _getLightColor = (align) => {
+                      const _m = align && align.match(/^(?:left|right)-custom-(\d+)$/);
+                      if (_m) { const _c = _customColors[parseInt(_m[1])-1]; if (_c) return _c.light; }
+                      return isRightAlignment(align) ? rightBubbleColor : normalBubbleColor;
+                  };
+                  const _exportBubbleColor = _getLightColor(finalAlignment);
+                  const bubbleBgStyle = `--bubble-bg-color: ${_exportBubbleColor}; --bubble-arrow-color: ${_exportBubbleColor};`;
+                  const _isRight = isRightAlignment(finalAlignment);
 
                   if (finalDisplayMode === 'narration') {
                       logBodyContent += `
@@ -3220,14 +3325,14 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                   } else {
                       logBodyContent += `
 <div class="message-item export log-item" data-tab="${escapeHtml(item.tab || 'main')}" data-speaker="${escapeHtml(originalSpeaker)}" data-display-mode="${finalDisplayMode}">
-  <div class="message-container export ${finalAlignment === 'right' ? 'align-right' : ''}">
+  <div class="message-container export ${_isRight ? 'align-right' : ''}">
       <div class="icon-container export" style="width:${iconSize}px; height:${iconSize}px;">
           ${iconElHtml}
           <span class="icon-placeholder export" style="display: ${placeholderDisplay}; border-color: ${iconBorderColor}; line-height: ${Math.round(iconSize*0.9)}px; font-size: ${Math.round(iconSize*0.5)}px;">${placeholderChar}</span>
       </div>
       <div class="content-container export">
           <span class="speaker-name-default export" style="${textStyle}">${escapeHtml(speakerName)} <span class="original-tab export">[${escapeHtml(item.tab || 'main')}]</span></span>
-          <div class="bubble export bubble-left" style="${bubbleBgStyle} ${textStyle}">${parseMarkdownForExport(item.message)}</div>
+          <div class="bubble export ${_isRight ? 'bubble-right' : 'bubble-left'}" data-bubble-align="${finalAlignment}" style="${bubbleBgStyle} ${textStyle}">${parseMarkdownForExport(item.message)}</div>
       </div>
   </div>
 </div>\n`;
@@ -3323,7 +3428,8 @@ ${navLinks}
          lightText:   s.baseTextColor || '#333333',
          darkText:    s.darkBaseTextColor || '#e8e8e8',
          lightEdge:   s.textEdgeColor || '#ffffff',
-         darkEdge:    s.darkTextEdgeColor || 'transparent'
+         darkEdge:    s.darkTextEdgeColor || 'transparent',
+         customColors: s.customBubbleColors || []
        }) : 'null';
 
        return `
@@ -3501,6 +3607,17 @@ function updateExportTabSeparators() {
 }
 
 ${isZipOutput ? `
+function getExportBubbleColor(align, isDark, c) {
+  var m = align && align.match(/^(left|right)-custom-(\d+)$/);
+  if (m) {
+    var idx = parseInt(m[2]) - 1;
+    var custom = c.customColors && c.customColors[idx];
+    if (custom) return isDark ? custom.dark : custom.light;
+    return m[1] === 'right' ? (isDark ? c.darkRight : c.lightRight) : (isDark ? c.darkNormal : c.lightNormal);
+  }
+  var isRight = align === 'right' || (align && align.startsWith('right-custom-'));
+  return isDark ? (isRight ? c.darkRight : c.darkNormal) : (isRight ? c.lightRight : c.lightNormal);
+}
 function applyExportTheme(theme) {
   var isDark = theme === 'dark';
   var c = exportThemeColors;
@@ -3513,8 +3630,8 @@ function applyExportTheme(theme) {
     document.documentElement.style.setProperty('--bubble-right-bg-color', isDark ? c.darkRight : c.lightRight);
     document.documentElement.style.setProperty('--bubble-right-arrow-color', isDark ? c.darkRight : c.lightRight);
     exportLogDisplay.querySelectorAll('.bubble.export').forEach(function(b) {
-      var isRight = b.classList.contains('bubble-right');
-      var col = isDark ? (isRight ? c.darkRight : c.darkNormal) : (isRight ? c.lightRight : c.lightNormal);
+      var align = b.dataset.bubbleAlign || (b.classList.contains('bubble-right') ? 'right' : 'left');
+      var col = getExportBubbleColor(align, isDark, c);
       b.style.setProperty('--bubble-bg-color', col);
       b.style.setProperty('--bubble-arrow-color', col);
     });
@@ -3890,6 +4007,8 @@ body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { backg
       characterTabButton.addEventListener('click', () => switchSettingsTab('character'));
       customizeTabButton.addEventListener('click', () => switchSettingsTab('customize'));
       resetCustomizationButton.addEventListener('click', resetCustomization);
+      const addCustomBubbleColorBtn = document.getElementById('add-custom-bubble-color');
+      if (addCustomBubbleColorBtn) addCustomBubbleColorBtn.addEventListener('click', addCustomBubbleColor);
       logTabsNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) handleTabChange(e.target.dataset.tab); });
       speakerFilterSelect.addEventListener('change', handleSpeakerFilterChange);
       exportButton.addEventListener('click', handleExportZip);

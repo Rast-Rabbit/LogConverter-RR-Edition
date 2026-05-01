@@ -122,6 +122,13 @@
                         <div><label for="bubble-right-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ライト時）:</label><input type="color" id="bubble-right-color" value="#dcf8c6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
                         <div><label for="dark-right-bubble-color" class="block text-sm font-medium text-gray-700">右向き吹き出し色（ダーク時）:</label><input type="color" id="dark-right-bubble-color" value="#29342f" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
                     </div>
+                    <div class="md:col-span-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-700">カスタム吹き出し色:</span>
+                            <button id="add-custom-bubble-color" class="text-xs px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600">＋追加</button>
+                        </div>
+                        <div id="custom-bubble-colors-list" class="space-y-2"></div>
+                    </div>
                     <div><label for="font-size-slider" class="block text-sm font-medium text-gray-700">フォントサイズ: <span id="font-size-value">16</span>px</label><input type="range" id="font-size-slider" min="10" max="24" value="16" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
                     <div class="md:col-span-2 grid grid-cols-2 gap-3">
                         <div><label for="background-color" class="block text-sm font-medium text-gray-700">ログエリア背景色（ライト時）:</label><input type="color" id="background-color" value="#f3f4f6" class="mt-1 block w-full h-8 rounded border border-gray-300 cursor-pointer p-0.5"></div>
