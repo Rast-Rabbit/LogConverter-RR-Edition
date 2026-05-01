@@ -3888,13 +3888,13 @@ color: var(--base-text-color);
 .message-container.export.align-right .icon-container.export { margin-left: 12px; margin-right: 0; }
 .message-container.export.align-right .content-container.export { text-align: right; }
 .message-container.export.align-right .speaker-name-default.export { text-align: right; }
-.message-container.export.align-right .bubble.export.bubble-left {
+.bubble.export.bubble-right {
     margin-left: auto; margin-right: 0;
-    background-color: var(--bubble-right-bg-color);
 }
-.message-container.export.align-right .bubble.export.bubble-left::before {
+.bubble.export.bubble-right::before {
+    content: ""; position: absolute; top: 10px; width: 0; height: 0; border-style: solid;
     left: auto; right: -8px; border-width: 8px 0 8px 10px;
-    border-color: transparent transparent transparent var(--bubble-right-arrow-color);
+    border-color: transparent transparent transparent var(--bubble-arrow-color);
 }
 .icon-container.export {
     flex-shrink: 0; margin-right: 12px;
@@ -3998,7 +3998,7 @@ ${!isSingleFileHtml ? `
     .icon-placeholder.export { line-height: ${responsivePlaceholderLineHeight}px; font-size: ${responsivePlaceholderFontSize}px; }
     .bubble.export { padding: 8px 12px; }
     .bubble.export.bubble-left::before { top: 8px; left: -7px; border-width: 7px 9px 7px 0;}
-    .message-container.export.align-right .bubble.export.bubble-left::before { top: 8px; right: -7px; left:auto; border-width: 7px 0 7px 9px;}
+    .bubble.export.bubble-right::before { top: 8px; right: -7px; left: auto; border-width: 7px 0 7px 9px;}
     .speaker-name-default.export { font-size: 0.92em; }
     .original-tab.export { font-size: 0.82em; }
     .inserted-image.export { max-width: 95%; max-height: 400px; }
