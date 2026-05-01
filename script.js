@@ -55,6 +55,9 @@
       return isDark ? customizationSettings.darkNormalBubbleColor : customizationSettings.normalBubbleColor;
   }
 
+  let bulkMoveMode = false;
+  let bulkMoveSelected = []; // item IDs in selection order
+
    let currentTabFilter = 'all';
    let currentSpeakerFilter = 'all';
    let visibleTabsInAllMode = new Set();
@@ -129,7 +132,7 @@
   const logHeightValueSpan = document.getElementById('log-height-value');
   const iconChangeInput = document.getElementById('message-icon-change-input');
   const iconSelectDropdown = document.getElementById('icon-select-dropdown');
-  const addHeaderImageButton = document.getElementById('add-header-image-button');
+  const bulkMoveButton = document.getElementById('bulk-move-button');
   const skipDeleteConfirmToggle = document.getElementById('skip-delete-confirm-toggle');
   const addNewCharacterButton = document.getElementById('add-new-character-button');
   const addNewTabButton = document.getElementById('add-new-tab-button');
@@ -711,11 +714,11 @@
   function enableControls() {
        exportButton.disabled = false; if (exportHtmlButton) exportHtmlButton.disabled = false; saveProjectButton.disabled = false;
        speakerFilterSelect.disabled = Object.keys(speakerFrequencies).length === 0 && Object.keys(characterSettings).filter(s => !speakerFrequencies[s]).length === 0;
-       exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; addHeaderImageButton.disabled = false; addNewCharacterButton.disabled = false; if (addNewTabButton) addNewTabButton.disabled = false;
+       exportHtmlTitleInput.disabled = false; exportZipFilenameInput.disabled = false; bulkMoveButton.disabled = false; addNewCharacterButton.disabled = false; if (addNewTabButton) addNewTabButton.disabled = false;
   }
   function disableControls() {
       exportButton.disabled = true; if (exportHtmlButton) exportHtmlButton.disabled = true; saveProjectButton.disabled = true;
-      speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; addHeaderImageButton.disabled = true; addNewCharacterButton.disabled = true; if (addNewTabButton) addNewTabButton.disabled = true;
+      speakerFilterSelect.disabled = true; exportHtmlTitleInput.disabled = true; exportZipFilenameInput.disabled = true; bulkMoveButton.disabled = true; addNewCharacterButton.disabled = true; if (addNewTabButton) addNewTabButton.disabled = true;
   }
 
   function parseCocofoliaLogHtml(htmlContent) {
@@ -1741,6 +1744,7 @@
   }
 
   function renderLog() {
+       if (bulkMoveMode) exitBulkMoveMode();
        if (isRenderingLog) {
            console.log("Render already in progress. Skipping.");
            return;
@@ -2776,6 +2780,137 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
        populateTabSettingsUI();
        if (customizationSettings.speakerAlignmentMode) populateCharacterSettingsUI();
    }
+
+  // ── まとめて移動モード ──
+  function enterBulkMoveMode() {
+      if (displayLogData.length === 0) return;
+      bulkMoveMode = true;
+      bulkMoveSelected = [];
+      bulkMoveButton.textContent = 'キャンセル';
+      bulkMoveButton.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+      bulkMoveButton.classList.add('bg-red-500', 'hover:bg-red-600');
+      logDisplayDiv.classList.add('bulk-move-active');
+      // ヒントバナーを先頭に追加
+      const banner = document.createElement('div');
+      banner.className = 'bm-hint-banner';
+      banner.id = 'bm-hint-banner';
+      banner.textContent = 'メッセージをクリックして選択 → メッセージ間をクリックして移動 | Escキーでキャンセル';
+      logDisplayDiv.prepend(banner);
+      _insertBulkMoveBars();
+      logDisplayDiv.addEventListener('click', _bulkMoveCaptureHandler, { capture: true });
+      document.addEventListener('keydown', _bulkMoveKeydownHandler);
+  }
+
+  function exitBulkMoveMode() {
+      if (!bulkMoveMode) return;
+      bulkMoveMode = false;
+      bulkMoveSelected = [];
+      bulkMoveButton.textContent = 'メッセージを纏めて移動';
+      bulkMoveButton.classList.remove('bg-red-500', 'hover:bg-red-600');
+      bulkMoveButton.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+      logDisplayDiv.classList.remove('bulk-move-active');
+      document.getElementById('bm-hint-banner')?.remove();
+      logDisplayDiv.querySelectorAll('.bm-insert-bar').forEach(el => el.remove());
+      logDisplayDiv.querySelectorAll('.message-item.bm-selected').forEach(el => {
+          el.classList.remove('bm-selected');
+          el.style.position = '';
+      });
+      logDisplayDiv.querySelectorAll('.bm-order-badge').forEach(el => el.remove());
+      logDisplayDiv.removeEventListener('click', _bulkMoveCaptureHandler, { capture: true });
+      document.removeEventListener('keydown', _bulkMoveKeydownHandler);
+  }
+
+  function _insertBulkMoveBars() {
+      const visibleItems = [...logDisplayDiv.children].filter(
+          el => !el.classList.contains('hidden-log-item') &&
+                !el.classList.contains('bm-hint-banner') &&
+                el.dataset.itemId
+      );
+      for (let i = 0; i < visibleItems.length - 1; i++) {
+          const bar = document.createElement('div');
+          bar.className = 'bm-insert-bar';
+          bar.dataset.insertAfterId = visibleItems[i].dataset.itemId;
+          bar.addEventListener('click', (e) => {
+              e.stopPropagation();
+              _executeBulkMove(bar.dataset.insertAfterId);
+          });
+          visibleItems[i].after(bar);
+      }
+  }
+
+  function _bulkMoveCaptureHandler(e) {
+      if (!bulkMoveMode) return;
+      const messageEl = e.target.closest('.message-item');
+      if (messageEl) {
+          e.stopPropagation();
+          e.preventDefault();
+          _toggleBulkMoveSelection(messageEl);
+      }
+  }
+
+  function _bulkMoveKeydownHandler(e) {
+      if (e.key === 'Escape') exitBulkMoveMode();
+  }
+
+  function _toggleBulkMoveSelection(messageEl) {
+      const id = messageEl.dataset.itemId;
+      if (!id) return;
+      const idx = bulkMoveSelected.indexOf(id);
+      if (idx !== -1) {
+          bulkMoveSelected.splice(idx, 1);
+          messageEl.classList.remove('bm-selected');
+          messageEl.style.position = '';
+          messageEl.querySelector('.bm-order-badge')?.remove();
+          _updateBulkMoveNumbers();
+      } else {
+          bulkMoveSelected.push(id);
+          messageEl.classList.add('bm-selected');
+          messageEl.style.position = 'relative';
+          const badge = document.createElement('div');
+          badge.className = 'bm-order-badge';
+          badge.textContent = bulkMoveSelected.length;
+          messageEl.appendChild(badge);
+      }
+  }
+
+  function _updateBulkMoveNumbers() {
+      bulkMoveSelected.forEach((id, i) => {
+          const el = logDisplayDiv.querySelector(`.message-item[data-item-id="${id}"] .bm-order-badge`);
+          if (el) el.textContent = i + 1;
+      });
+  }
+
+  function _executeBulkMove(insertAfterId) {
+      if (bulkMoveSelected.length === 0) return;
+      const selectedItems = bulkMoveSelected
+          .map(id => displayLogData.find(item => item.id === id))
+          .filter(Boolean);
+      if (selectedItems.length === 0) { exitBulkMoveMode(); return; }
+
+      // 挿入位置を特定: insertAfterIdが選択済みなら手前の非選択アイテムまで遡る
+      let anchorOrigIdx = displayLogData.findIndex(item => item.id === insertAfterId);
+      while (anchorOrigIdx >= 0 && bulkMoveSelected.includes(displayLogData[anchorOrigIdx].id)) {
+          anchorOrigIdx--;
+      }
+
+      const remaining = displayLogData.filter(item => !bulkMoveSelected.includes(item.id));
+
+      if (anchorOrigIdx < 0) {
+          // 先頭より前になってしまう → 挿入しない
+          exitBulkMoveMode();
+          return;
+      }
+      const anchorId = displayLogData[anchorOrigIdx].id;
+      const insertPos = remaining.findIndex(item => item.id === anchorId);
+      if (insertPos === -1) { exitBulkMoveMode(); return; }
+
+      remaining.splice(insertPos + 1, 0, ...selectedItems);
+      displayLogData.length = 0;
+      remaining.forEach(item => displayLogData.push(item));
+
+      exitBulkMoveMode();
+      renderLog();
+  }
    function saveCustomization() { try { localStorage.setItem(LOCALSTORAGE_CUSTOMIZATION_KEY, JSON.stringify(customizationSettings)); } catch (error) { console.error("Error saving customization settings to LocalStorage:", error); } }
    function loadCustomization() {
       let loaded = null; try { const savedJson = localStorage.getItem(LOCALSTORAGE_CUSTOMIZATION_KEY); if (savedJson) loaded = JSON.parse(savedJson); } catch (error) { console.error("Error loading customization settings from LocalStorage:", error); localStorage.removeItem(LOCALSTORAGE_CUSTOMIZATION_KEY); }
@@ -4015,7 +4150,7 @@ body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { backg
       if (exportHtmlButton) exportHtmlButton.addEventListener('click', handleExportSingleHtml);
       saveProjectButton.addEventListener('click', saveProject);
       insertImageInput.addEventListener('change', handleInsertImageFile);
-      addHeaderImageButton.addEventListener('click', () => triggerImageInsert('header', null));
+      bulkMoveButton.addEventListener('click', () => { if (bulkMoveMode) exitBulkMoveMode(); else enterBulkMoveMode(); });
       addNewCharacterButton.addEventListener('click', openAddNewCharacterModal);
       if (addNewTabButton) addNewTabButton.addEventListener('click', () => {
           const name = prompt('新規タブ名を入力してください:');
