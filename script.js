@@ -9,7 +9,7 @@
       normalBubbleColor: '#ffffff',       // ライト：左向き吹き出し
       darkNormalBubbleColor: '#2d2d2d',    // ダーク：左向き吹き出し
       rightBubbleColor: '#dcf8c6',        // ライト：右向き吹き出し
-      darkRightBubbleColor: '#1e3d22',    // ダーク：右向き吹き出し
+      darkRightBubbleColor: '#29342f',    // ダーク：右向き吹き出し
       fontSize: 16, backgroundColor: '#f3f4f6',         // ライト：ログ背景
       darkBgColor: 'rgba(0,0,0,0.30)',             // ダーク：ログ背景（半透明ガラス）
       iconSize: 64,
@@ -2620,7 +2620,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   function resetCustomizationDefaults() {
       customizationSettings = {
           normalBubbleColor: '#ffffff',     darkNormalBubbleColor: '#2d2d2d',
-          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: '#1e3d22',
+          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: '#29342f',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80,
           fontFamily: 'font-noto-sans', logDisplayHeight: 960,
@@ -2652,8 +2652,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               darkNormalColorInput.value = dnv.startsWith('#') ? dnv : '#2d2d2d';
           }
           if (darkRightColorInput) {
-              const drv = customizationSettings.darkRightBubbleColor || '#1e3d22';
-              darkRightColorInput.value = drv.startsWith('#') ? drv : '#1e3d22';
+              const drv = customizationSettings.darkRightBubbleColor || '#29342f';
+              darkRightColorInput.value = drv.startsWith('#') ? drv : '#29342f';
           }
           if (darkBgColorInput) darkBgColorInput.value = customizationSettings.darkBgColor || 'rgba(0,0,0,0.30)';
           if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#e8e8e8';
@@ -2687,7 +2687,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           Object.assign(customizationSettings, loaded);
           // rgba値が保存されていた場合は新デフォルトに移行
           if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
-          if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#1e3d22';
+          if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#29342f';
       } else { resetCustomizationDefaults(); }
   }
 
@@ -2793,7 +2793,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       exportZipFilenameInput.value = projectData.exportZipFilename || logFileNameBase;
       const defaultCustomization = {
           normalBubbleColor: '#ffffff', darkNormalBubbleColor: '#2d2d2d',
-          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: '#1e3d22',
+          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: '#29342f',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, fontFamily: 'font-noto-sans',
           logDisplayHeight: 960, skipDeleteConfirm: false,
@@ -2805,7 +2805,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       customizationSettings = { ...defaultCustomization, ...projectData.customizationSettings };
       if (typeof customizationSettings.textEdgeColor === 'undefined') customizationSettings.textEdgeColor = defaultCustomization.textEdgeColor;
       if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
-      if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#1e3d22';
+      if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#29342f';
       if (typeof customizationSettings.backgroundImageFileName === 'undefined') customizationSettings.backgroundImageFileName = defaultCustomization.backgroundImageFileName;
 
       nextUniqueId = projectData.nextUniqueId || 0;
@@ -3317,7 +3317,7 @@ ${navLinks}
          lightNormal: s.normalBubbleColor || '#ffffff',
          darkNormal:  s.darkNormalBubbleColor || '#2d2d2d',
          lightRight:  s.rightBubbleColor || '#dcf8c6',
-         darkRight:   s.darkRightBubbleColor || '#1e3d22',
+         darkRight:   s.darkRightBubbleColor || '#29342f',
          lightBg:     s.backgroundColor || '#f3f4f6',
          darkBg:      s.darkBgColor || 'rgba(0,0,0,0.30)',
          lightText:   s.baseTextColor || '#333333',
