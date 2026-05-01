@@ -7,9 +7,9 @@
   let characterSettings = {}; // { speakerName: { displayName, icon, expressions, alignment, color, customTextColor, forceNarration, isNew } }
   let customizationSettings = {
       normalBubbleColor: '#ffffff',       // ライト：左向き吹き出し
-      darkNormalBubbleColor: 'rgba(255,255,255,0.09)',   // ダーク：左向き吹き出し（ガラス）
+      darkNormalBubbleColor: '#2d2d2d',    // ダーク：左向き吹き出し
       rightBubbleColor: '#dcf8c6',        // ライト：右向き吹き出し
-      darkRightBubbleColor: 'rgba(200,240,120,0.18)',    // ダーク：右向き吹き出し（ガラス）
+      darkRightBubbleColor: '#1e3d22',    // ダーク：右向き吹き出し
       fontSize: 16, backgroundColor: '#f3f4f6',         // ライト：ログ背景
       darkBgColor: 'rgba(0,0,0,0.30)',             // ダーク：ログ背景（半透明ガラス）
       iconSize: 64,
@@ -2619,8 +2619,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   }
   function resetCustomizationDefaults() {
       customizationSettings = {
-          normalBubbleColor: '#ffffff',     darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
-          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: 'rgba(200,240,120,0.18)',
+          normalBubbleColor: '#ffffff',     darkNormalBubbleColor: '#2d2d2d',
+          rightBubbleColor: '#dcf8c6',      darkRightBubbleColor: '#1e3d22',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80,
           fontFamily: 'font-noto-sans', logDisplayHeight: 960,
@@ -2647,8 +2647,14 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           fontSizeSlider.value = customizationSettings.fontSize; fontSizeValueSpan.textContent = customizationSettings.fontSize; backgroundColorInput.value = customizationSettings.backgroundColor; iconSizeSlider.value = customizationSettings.iconSize; iconSizeValueSpan.textContent = customizationSettings.iconSize; bubbleWidthSlider.value = customizationSettings.bubbleMaxWidth; bubbleWidthValueSpan.textContent = customizationSettings.bubbleMaxWidth; fontFamilySelect.value = customizationSettings.fontFamily; logHeightSlider.value = customizationSettings.logDisplayHeight; logHeightValueSpan.textContent = customizationSettings.logDisplayHeight; skipDeleteConfirmToggle.checked = customizationSettings.skipDeleteConfirm;
           baseTextColorInput.value = customizationSettings.baseTextColor;
           textEdgeColorInput.value = customizationSettings.textEdgeColor;
-          if (darkNormalColorInput) darkNormalColorInput.value = customizationSettings.darkNormalBubbleColor || 'rgba(255,255,255,0.09)';
-          if (darkRightColorInput) darkRightColorInput.value = customizationSettings.darkRightBubbleColor || 'rgba(200,240,120,0.18)';
+          if (darkNormalColorInput) {
+              const dnv = customizationSettings.darkNormalBubbleColor || '#2d2d2d';
+              darkNormalColorInput.value = dnv.startsWith('#') ? dnv : '#2d2d2d';
+          }
+          if (darkRightColorInput) {
+              const drv = customizationSettings.darkRightBubbleColor || '#1e3d22';
+              darkRightColorInput.value = drv.startsWith('#') ? drv : '#1e3d22';
+          }
           if (darkBgColorInput) darkBgColorInput.value = customizationSettings.darkBgColor || 'rgba(0,0,0,0.30)';
           if (darkBaseTextColorInput) darkBaseTextColorInput.value = customizationSettings.darkBaseTextColor || '#e8e8e8';
           if (darkTextEdgeColorInput) darkTextEdgeColorInput.value = customizationSettings.darkTextEdgeColor || 'transparent';
@@ -2666,9 +2672,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
        refreshColorSwatches();
    }
    function refreshColorSwatches() {
-       [['dark-normal-bubble-color', 'dark-normal-bubble-color-swatch'],
-        ['dark-right-bubble-color',  'dark-right-bubble-color-swatch'],
-        ['dark-bg-color',            'dark-bg-color-swatch'],
+       [['dark-bg-color',            'dark-bg-color-swatch'],
         ['dark-text-edge-color',     'dark-text-edge-color-swatch'],
        ].forEach(([inputId, swatchId]) => {
            const input = document.getElementById(inputId);
@@ -2681,6 +2685,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       let loaded = null; try { const savedJson = localStorage.getItem(LOCALSTORAGE_CUSTOMIZATION_KEY); if (savedJson) loaded = JSON.parse(savedJson); } catch (error) { console.error("Error loading customization settings from LocalStorage:", error); localStorage.removeItem(LOCALSTORAGE_CUSTOMIZATION_KEY); }
       if (loaded) {
           Object.assign(customizationSettings, loaded);
+          // rgba値が保存されていた場合は新デフォルトに移行
+          if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
+          if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#1e3d22';
       } else { resetCustomizationDefaults(); }
   }
 
@@ -2785,8 +2792,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       exportHtmlTitleInput.value = projectData.exportHtmlTitle || logFileNameBase;
       exportZipFilenameInput.value = projectData.exportZipFilename || logFileNameBase;
       const defaultCustomization = {
-          normalBubbleColor: '#ffffff', darkNormalBubbleColor: 'rgba(255,255,255,0.09)',
-          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: 'rgba(200,240,120,0.18)',
+          normalBubbleColor: '#ffffff', darkNormalBubbleColor: '#2d2d2d',
+          rightBubbleColor: '#dcf8c6',  darkRightBubbleColor: '#1e3d22',
           fontSize: 16, backgroundColor: '#f3f4f6', darkBgColor: 'rgba(0,0,0,0.30)',
           iconSize: 64, bubbleMaxWidth: 80, fontFamily: 'font-noto-sans',
           logDisplayHeight: 960, skipDeleteConfirm: false,
@@ -2797,6 +2804,8 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       };
       customizationSettings = { ...defaultCustomization, ...projectData.customizationSettings };
       if (typeof customizationSettings.textEdgeColor === 'undefined') customizationSettings.textEdgeColor = defaultCustomization.textEdgeColor;
+      if (!customizationSettings.darkNormalBubbleColor.startsWith('#')) customizationSettings.darkNormalBubbleColor = '#2d2d2d';
+      if (!customizationSettings.darkRightBubbleColor.startsWith('#')) customizationSettings.darkRightBubbleColor = '#1e3d22';
       if (typeof customizationSettings.backgroundImageFileName === 'undefined') customizationSettings.backgroundImageFileName = defaultCustomization.backgroundImageFileName;
 
       nextUniqueId = projectData.nextUniqueId || 0;
@@ -3306,9 +3315,9 @@ ${navLinks}
        const s = customSettings || {};
        const exportThemeColorsString = isZipOutput ? JSON.stringify({
          lightNormal: s.normalBubbleColor || '#ffffff',
-         darkNormal:  s.darkNormalBubbleColor || 'rgba(255,255,255,0.09)',
+         darkNormal:  s.darkNormalBubbleColor || '#2d2d2d',
          lightRight:  s.rightBubbleColor || '#dcf8c6',
-         darkRight:   s.darkRightBubbleColor || 'rgba(200,240,120,0.18)',
+         darkRight:   s.darkRightBubbleColor || '#1e3d22',
          lightBg:     s.backgroundColor || '#f3f4f6',
          darkBg:      s.darkBgColor || 'rgba(0,0,0,0.30)',
          lightText:   s.baseTextColor || '#333333',
