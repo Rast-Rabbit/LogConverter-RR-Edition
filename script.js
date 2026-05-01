@@ -2841,9 +2841,11 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
   function _bulkMoveCaptureHandler(e) {
       if (!bulkMoveMode) return;
       const messageEl = e.target.closest('.message-item');
-      if (messageEl) {
-          e.stopPropagation();
-          e.preventDefault();
+      if (!messageEl) return;
+      e.stopPropagation();
+      e.preventDefault();
+      // バブル（吹き出し）部分のクリックのみ選択トグル
+      if (e.target.closest('.message-body')) {
           _toggleBulkMoveSelection(messageEl);
       }
   }

@@ -1257,14 +1257,19 @@ input:checked+.slider:before {
   outline-offset: -2px;
 }
 #log-display.bulk-move-active .message-item {
-  cursor: pointer;
   border-radius: 8px;
   transition: box-shadow 0.12s ease, background 0.12s ease;
 }
+/* バブル部分のみをクリック対象にする */
 #log-display.bulk-move-active .message-item * {
   pointer-events: none;
+  cursor: default;
 }
-#log-display.bulk-move-active .message-item:not(.bm-selected):hover {
+#log-display.bulk-move-active .message-item .message-body {
+  pointer-events: auto;
+  cursor: pointer;
+}
+#log-display.bulk-move-active .message-item:not(.bm-selected):has(.message-body:hover) {
   box-shadow: 0 0 0 2px #6366f1, 0 3px 10px rgba(99,102,241,0.18);
 }
 #log-display.bulk-move-active .message-item.bm-selected {
@@ -1288,29 +1293,47 @@ input:checked+.slider:before {
   user-select: none;
 }
 .bm-insert-bar {
+  /* 描画サイズ固定: paddingで当たり判定を上下に拡張しnegative marginで相殺 */
   height: 6px;
-  margin: 2px 0;
-  border-radius: 4px;
+  padding: 9px 0;
+  margin: -9px 0;
+  box-sizing: content-box;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: height 0.14s ease, background 0.14s ease, outline 0.14s ease;
   position: relative;
+  z-index: 5;
 }
-.bm-insert-bar:hover {
-  height: 30px;
-  background: rgba(99,102,241,0.1);
-  outline: 1.5px dashed rgba(99,102,241,0.55);
-  outline-offset: -1px;
-  border-radius: 4px;
+/* 視覚的なライン（絶対配置なのでレイアウトに影響しない） */
+.bm-insert-bar::before {
+  content: '';
+  position: absolute;
+  left: 6px; right: 6px;
+  top: 50%; transform: translateY(-50%);
+  height: 2px;
+  background: transparent;
+  border-radius: 1px;
+  transition: background 0.1s, box-shadow 0.1s;
+  pointer-events: none;
 }
-.bm-insert-bar:hover::after {
+.bm-insert-bar:hover::before {
+  background: rgba(99,102,241,0.5);
+  box-shadow: 0 0 5px rgba(99,102,241,0.25);
+}
+/* テキストラベル（絶対配置・opacityのみ変化するのでreflowなし） */
+.bm-insert-bar::after {
   content: '↓ ここに移動';
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
   font-size: 10px; font-weight: 700;
   color: #6366f1;
-  letter-spacing: 0.04em;
+  white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.bm-insert-bar:hover::after {
+  opacity: 1;
 }
 .bm-hint-banner {
   font-size: 11px;
@@ -1328,7 +1351,7 @@ input:checked+.slider:before {
 body.rr-site-dark #log-display.bulk-move-active {
   outline-color: rgba(129,140,248,0.4);
 }
-body.rr-site-dark #log-display.bulk-move-active .message-item:not(.bm-selected):hover {
+body.rr-site-dark #log-display.bulk-move-active .message-item:not(.bm-selected):has(.message-body:hover) {
   box-shadow: 0 0 0 2px #818cf8, 0 3px 10px rgba(129,140,248,0.2);
 }
 body.rr-site-dark #log-display.bulk-move-active .message-item.bm-selected {
@@ -1339,11 +1362,11 @@ body.rr-site-dark .bm-order-badge {
   background: #6366f1;
   color: #f0f0ff;
 }
-body.rr-site-dark .bm-insert-bar:hover {
-  background: rgba(129,140,248,0.12);
-  outline-color: rgba(129,140,248,0.5);
+body.rr-site-dark .bm-insert-bar:hover::before {
+  background: rgba(129,140,248,0.5);
+  box-shadow: 0 0 5px rgba(129,140,248,0.2);
 }
-body.rr-site-dark .bm-insert-bar:hover::after {
+body.rr-site-dark .bm-insert-bar::after {
   color: #818cf8;
 }
 body.rr-site-dark .bm-hint-banner {
