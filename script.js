@@ -1592,9 +1592,22 @@
               renderLog();
           });
 
+          // 出力非表示トグル
+          const tabHiddenToggle = document.createElement('button');
+          const isTabHidden = !!tabSettings[tab].hidden;
+          tabHiddenToggle.className = `tab-hidden-toggle ml-auto flex-shrink-0${isTabHidden ? ' active' : ''}`;
+          tabHiddenToggle.textContent = '👁';
+          tabHiddenToggle.title = isTabHidden ? 'タブ出力非表示中 (クリックで解除)' : '出力時にこのタブを非表示にする';
+          tabHiddenToggle.addEventListener('click', () => {
+              if (!tabSettings[tab]) tabSettings[tab] = {};
+              tabSettings[tab].hidden = !tabSettings[tab].hidden;
+              tabHiddenToggle.classList.toggle('active', !!tabSettings[tab].hidden);
+              tabHiddenToggle.title = tabSettings[tab].hidden ? 'タブ出力非表示中 (クリックで解除)' : '出力時にこのタブを非表示にする';
+          });
+
           // 削除ボタン
           const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'expression-delete-btn ml-auto flex-shrink-0';
+          deleteBtn.className = 'expression-delete-btn flex-shrink-0';
           deleteBtn.textContent = '削除';
           deleteBtn.title = `タブ「${tab}」とそのメッセージをすべて削除`;
           deleteBtn.addEventListener('click', () => {
@@ -1612,6 +1625,7 @@
           row.appendChild(nameSpan);
           row.appendChild(label);
           row.appendChild(alignSelect);
+          row.appendChild(tabHiddenToggle);
           row.appendChild(deleteBtn);
           row.appendChild(mergeBtn);
           fragment.appendChild(row);
@@ -3220,7 +3234,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
            // 新形式: tabSettingsをそのまま読み込み
            tabSettings = {};
            [...uniqueTabsFound].filter(t => t !== 'all').forEach(tab => {
-               tabSettings[tab] = { alignment: (projectData.tabSettings[tab]?.alignment || 'left') };
+               tabSettings[tab] = { alignment: (projectData.tabSettings[tab]?.alignment || 'left'), hidden: !!(projectData.tabSettings[tab]?.hidden) };
            });
        } else {
            // 旧形式: 各タブの最初のメッセージのalignmentから推定してコンバート
@@ -3428,6 +3442,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           try {
                // Note: Tab boundary separators are generated dynamically in the exported viewer (no static <hr>).
               if (item.hidden) return;
+              if (item.type === 'message' && tabSettingsData?.[item.tab]?.hidden) return;
               if (item.type === 'message') {
                   const charSettingFull = characterSettings[item.speaker] || { displayName: item.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
                   const speakerName = charSettingFull.displayName; const originalSpeaker = item.speaker;
@@ -3524,6 +3539,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                    const isHeader = item.anchorId === HEADER_IMAGE_ANCHOR;
                    let dataTab = 'header', dataSpeaker = 'header_img';
                    if(!isHeader) { const anchorMsg = displayLogData.find(m => m.id === item.anchorId && m.type==='message'); if(anchorMsg) { dataTab = anchorMsg.tab || 'main'; dataSpeaker = anchorMsg.speaker || '不明'; } else { dataTab = 'main'; dataSpeaker = '不明';}}
+                   if (!isHeader && tabSettingsData?.[dataTab]?.hidden) return;
 
                    if (uploadedFiles[imageId] instanceof Blob) { const file = uploadedFiles[imageId]; imageRelativePath = getImagePathForKey(imageId, file); }
                    else {

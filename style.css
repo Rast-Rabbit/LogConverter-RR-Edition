@@ -276,6 +276,30 @@ body {
     opacity: 0.5;
 }
 
+/* ─── タブ設定: 出力非表示トグル ─── */
+.tab-hidden-toggle {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    border: 1px solid #bbb;
+    background-color: #f0f0f0;
+    color: #555;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.tab-hidden-toggle:hover {
+    background-color: #ddd;
+    border-color: #999;
+}
+
+.tab-hidden-toggle.active {
+    background-color: #fee2e2;
+    border-color: #f87171;
+    color: #dc2626;
+}
+
 /* ─── 出力非表示ボタン ─── */
 .hide-output-toggle {
     position: absolute;
@@ -1199,6 +1223,19 @@ input:checked+.slider:before {
   body.rr-site-dark .message-item[data-display-mode="narration"] .message-body {
     background: rgba(255,255,255,0.04);
     border-left-color: rgba(176,174,238,0.55);
+  }
+  body.rr-site-dark .tab-hidden-toggle {
+    background-color: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+    color: #aaa;
+  }
+  body.rr-site-dark .tab-hidden-toggle:hover {
+    background-color: rgba(255,255,255,0.15);
+  }
+  body.rr-site-dark .tab-hidden-toggle.active {
+    background-color: rgba(220, 38, 38, 0.25);
+    border-color: #f87171;
+    color: #fca5a5;
   }
   body.rr-site-dark .hide-output-toggle {
     background-color: rgba(255,255,255,0.08);
