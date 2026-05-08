@@ -1600,13 +1600,15 @@
           const tabHiddenToggle = document.createElement('button');
           const isTabHidden = !!tabSettings[tab].hidden;
           tabHiddenToggle.className = `tab-hidden-toggle ml-auto flex-shrink-0${isTabHidden ? ' active' : ''}`;
-          tabHiddenToggle.textContent = '👁';
-          tabHiddenToggle.title = isTabHidden ? 'タブ非表示中 (クリックで表示)' : 'このタブをエディタ・出力から非表示にする';
+          tabHiddenToggle.textContent = isTabHidden ? '非表示中' : '非表示';
+          tabHiddenToggle.title = isTabHidden ? 'クリックで表示に戻す' : 'このタブをエディタ・出力から非表示にする';
           tabHiddenToggle.addEventListener('click', () => {
               if (!tabSettings[tab]) tabSettings[tab] = {};
               tabSettings[tab].hidden = !tabSettings[tab].hidden;
-              tabHiddenToggle.classList.toggle('active', !!tabSettings[tab].hidden);
-              tabHiddenToggle.title = tabSettings[tab].hidden ? 'タブ非表示中 (クリックで表示)' : 'このタブをエディタ・出力から非表示にする';
+              const nowHidden = !!tabSettings[tab].hidden;
+              tabHiddenToggle.classList.toggle('active', nowHidden);
+              tabHiddenToggle.textContent = nowHidden ? '非表示中' : '非表示';
+              tabHiddenToggle.title = nowHidden ? 'クリックで表示に戻す' : 'このタブをエディタ・出力から非表示にする';
               populateTabsUI();
               renderLog();
           });
@@ -2037,7 +2039,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       const hideOutputToggle = document.createElement('button');
       hideOutputToggle.className = 'hide-output-toggle';
       hideOutputToggle.title = '出力時に非表示にする';
-      hideOutputToggle.textContent = '👁';
+      hideOutputToggle.textContent = '⊗';
       hideOutputToggle.onclick = () => toggleMessageHidden(logItem.id);
       container.appendChild(hideOutputToggle);
 

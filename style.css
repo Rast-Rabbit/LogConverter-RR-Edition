@@ -279,14 +279,16 @@ body {
 /* ─── タブ設定: 出力非表示トグル ─── */
 .tab-hidden-toggle {
     flex-shrink: 0;
-    padding: 3px 8px;
-    font-size: 0.85rem;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    font-weight: 500;
     border-radius: 4px;
     border: 1px solid #bbb;
     background-color: #f0f0f0;
     color: #555;
     cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
 }
 
 .tab-hidden-toggle:hover {
