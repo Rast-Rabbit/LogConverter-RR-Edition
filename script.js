@@ -1457,11 +1457,15 @@
       if (sortedTabs.length <= 1 && sortedTabs[0] === 'all') { logTabsNav.innerHTML = '<span class="whitespace-nowrap py-2 px-1 text-gray-500 text-sm italic">タブ情報なし</span>'; return; }
       const fragment = document.createDocumentFragment();
       sortedTabs.forEach(tab => {
-          const button = document.createElement('button'); button.textContent = `[${escapeHtml(tab)}]`; button.dataset.tab = tab;
+          const isTabHidden = tab !== 'all' && !!tabSettings[tab]?.hidden;
+          const button = document.createElement('button');
+          button.textContent = isTabHidden ? `[${escapeHtml(tab)}] 👁` : `[${escapeHtml(tab)}]`;
+          button.dataset.tab = tab;
           const baseClasses = 'whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 transition-colors duration-150 ease-in-out';
           const activeClasses = 'border-indigo-500 text-indigo-600'; const inactiveClasses = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+          const hiddenClasses = 'opacity-40 line-through';
           const isActive = tab === currentTabFilter;
-          button.className = `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`;
+          button.className = `${baseClasses} ${isActive ? activeClasses : inactiveClasses}${isTabHidden ? ' ' + hiddenClasses : ''}`;
           button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', isActive ? 'true' : 'false');
           fragment.appendChild(button);
       });
@@ -1597,12 +1601,14 @@
           const isTabHidden = !!tabSettings[tab].hidden;
           tabHiddenToggle.className = `tab-hidden-toggle ml-auto flex-shrink-0${isTabHidden ? ' active' : ''}`;
           tabHiddenToggle.textContent = '👁';
-          tabHiddenToggle.title = isTabHidden ? 'タブ出力非表示中 (クリックで解除)' : '出力時にこのタブを非表示にする';
+          tabHiddenToggle.title = isTabHidden ? 'タブ非表示中 (クリックで表示)' : 'このタブをエディタ・出力から非表示にする';
           tabHiddenToggle.addEventListener('click', () => {
               if (!tabSettings[tab]) tabSettings[tab] = {};
               tabSettings[tab].hidden = !tabSettings[tab].hidden;
               tabHiddenToggle.classList.toggle('active', !!tabSettings[tab].hidden);
-              tabHiddenToggle.title = tabSettings[tab].hidden ? 'タブ出力非表示中 (クリックで解除)' : '出力時にこのタブを非表示にする';
+              tabHiddenToggle.title = tabSettings[tab].hidden ? 'タブ非表示中 (クリックで表示)' : 'このタブをエディタ・出力から非表示にする';
+              populateTabsUI();
+              renderLog();
           });
 
           // 削除ボタン
@@ -1796,6 +1802,8 @@
            } else {
                return false;
            }
+
+           if (itemTab && tabSettings[itemTab]?.hidden) return false;
 
            const speakerMatch = currentSpeakerFilter === 'all' || itemSpeaker === currentSpeakerFilter;
            if (!speakerMatch) return false;
