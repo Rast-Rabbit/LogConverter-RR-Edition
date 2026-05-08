@@ -1918,6 +1918,14 @@
           }
       }
 
+      const isHidden = !!logItem.hidden;
+      messageElement.dataset.hidden = isHidden ? 'true' : 'false';
+      const hideOutputToggle = messageElement.querySelector('.hide-output-toggle');
+      if (hideOutputToggle) {
+          hideOutputToggle.classList.toggle('active', isHidden);
+          hideOutputToggle.title = isHidden ? '出力非表示中 (クリックで解除)' : '出力時に非表示にする';
+      }
+
   }
 
   function createMessageElement(logItem) {
@@ -1999,6 +2007,18 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       container.appendChild(actionButtonContainer);
       container.appendChild(advancedActionButtonContainer);
 
+      const hiddenBadge = document.createElement('div');
+      hiddenBadge.className = 'hidden-output-badge';
+      hiddenBadge.textContent = '🚫 出力非表示';
+      container.appendChild(hiddenBadge);
+
+      const hideOutputToggle = document.createElement('button');
+      hideOutputToggle.className = 'hide-output-toggle';
+      hideOutputToggle.title = '出力時に非表示にする';
+      hideOutputToggle.textContent = '👁';
+      hideOutputToggle.onclick = () => toggleMessageHidden(logItem.id);
+      container.appendChild(hideOutputToggle);
+
       const toggleButton = document.createElement('button');
       toggleButton.className = 'display-mode-toggle';
       toggleButton.title = '表示モード切替 (フキダシ/描写)';
@@ -2023,6 +2043,15 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       if (setting && setting.forceNarration) return; // Do nothing if narration is forced
 
       const currentMode = displayLogData[itemIndex].displayMode || 'bubble'; const newMode = (currentMode === 'bubble') ? 'narration' : 'bubble'; displayLogData[itemIndex].displayMode = newMode;
+      const elementToUpdate = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
+      if (elementToUpdate) {
+          updateMessageElementPresentation(elementToUpdate, displayLogData[itemIndex]);
+      }
+  }
+  function toggleMessageHidden(itemId) {
+      const itemIndex = displayLogData.findIndex(item => item.id === itemId && item.type === 'message');
+      if (itemIndex === -1) return;
+      displayLogData[itemIndex].hidden = !displayLogData[itemIndex].hidden;
       const elementToUpdate = logDisplayDiv.querySelector(`.message-item[data-item-id="${itemId}"]`);
       if (elementToUpdate) {
           updateMessageElementPresentation(elementToUpdate, displayLogData[itemIndex]);
@@ -3398,6 +3427,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       dataForExport.forEach((item, index) => {
           try {
                // Note: Tab boundary separators are generated dynamically in the exported viewer (no static <hr>).
+              if (item.hidden) return;
               if (item.type === 'message') {
                   const charSettingFull = characterSettings[item.speaker] || { displayName: item.speaker, icon: null, expressions: {}, alignment: 'left', color: '#000000', customTextColor: null, forceNarration: false };
                   const speakerName = charSettingFull.displayName; const originalSpeaker = item.speaker;
