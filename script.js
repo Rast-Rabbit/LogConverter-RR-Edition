@@ -3408,9 +3408,9 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
 
   function convertBlobToCompressedDataURL(blob, options = {}) {
       // options: { maxDim, quality, whiteBg }
-      // maxDim: null = auto (256 for small icons, 512 for others), number = override
+      // maxDim: null = auto (256 for small, 512 for large), number = override
       // quality: JPEG quality (0-1), default 0.75
-      // whiteBg: if true, composite onto white and always output JPEG (for opaque images like backgrounds)
+      // whiteBg: composite onto white background and output JPEG (ignores alpha)
       const { maxDim: maxDimOverride = null, quality = 0.75, whiteBg = false } = options;
       return new Promise((resolve, reject) => {
           try {
@@ -3426,26 +3426,13 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                           const w = Math.max(1, Math.round(img.width * scale));
                           const h = Math.max(1, Math.round(img.height * scale));
 
-                          // Check for alpha by drawing on a temporary canvas first
-                          const tmpCanvas = document.createElement('canvas');
-                          tmpCanvas.width = w;
-                          tmpCanvas.height = h;
-                          const tmpCtx = tmpCanvas.getContext('2d', { alpha: true });
-                          tmpCtx.imageSmoothingEnabled = true;
-                          tmpCtx.imageSmoothingQuality = 'high';
-                          tmpCtx.drawImage(img, 0, 0, w, h);
-                          const imageData = tmpCtx.getImageData(0, 0, w, h);
-                          const hasAlpha = imageData.data.some((v, i) => i % 4 === 3 && v < 255);
+                          const canvas = document.createElement('canvas');
+                          canvas.width = w;
+                          canvas.height = h;
 
                           let out = '';
-                          if (!whiteBg && hasAlpha) {
-                              // 透明ピクセルあり: PNG で保持（透明アイコン等）
-                              try { out = tmpCanvas.toDataURL('image/png'); } catch (_e) { out = ''; }
-                          } else {
-                              // 不透明 or 白背景指定: 白背景 JPEG
-                              const canvas = document.createElement('canvas');
-                              canvas.width = w;
-                              canvas.height = h;
+                          if (whiteBg) {
+                              // 白背景に合成してJPEG出力（透明部分も白になる）
                               const ctx = canvas.getContext('2d', { alpha: false });
                               ctx.imageSmoothingEnabled = true;
                               ctx.imageSmoothingQuality = 'high';
@@ -3453,6 +3440,19 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                               ctx.fillRect(0, 0, w, h);
                               ctx.drawImage(img, 0, 0, w, h);
                               try { out = canvas.toDataURL('image/jpeg', quality); } catch (_e) { out = ''; }
+                          } else {
+                              // 透明ピクセルがあればPNG、なければJPEG
+                              const ctx = canvas.getContext('2d', { alpha: true });
+                              ctx.imageSmoothingEnabled = true;
+                              ctx.imageSmoothingQuality = 'high';
+                              ctx.drawImage(img, 0, 0, w, h);
+                              const imageData = ctx.getImageData(0, 0, w, h);
+                              const hasAlpha = imageData.data.some((v, i) => i % 4 === 3 && v < 255);
+                              if (hasAlpha) {
+                                  try { out = canvas.toDataURL('image/png'); } catch (_e) { out = ''; }
+                              } else {
+                                  try { out = canvas.toDataURL('image/jpeg', quality); } catch (_e) { out = ''; }
+                              }
                           }
                           if (!out || out === 'data:,') out = srcDataUrl;
                           resolve(out);
