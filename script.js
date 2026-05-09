@@ -3339,10 +3339,20 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               if (!(fileObject instanceof Blob)) continue;
               const imagePath = getImagePathForKey(key, fileObject);
               if (!imagePath || imageDataUrlMap.has(imagePath)) continue;
-              conversions.push((async () => {
-                  const dataUrl = await convertBlobToCompressedDataURL(fileObject);
-                  imageDataUrlMap.set(imagePath, dataUrl);
-              })());
+              conversions.push((async (k, fo, ip) => {
+                  let dataUrl;
+                  if (k.startsWith('img_')) {
+                      // 挿入画像（チャットアイコン用）: 圧縮しない
+                      dataUrl = await blobToDataUrl(fo);
+                  } else if (k === 'bg_image') {
+                      // 背景画像: 白背景JPEG、大きい場合は縮小
+                      dataUrl = await convertBlobToCompressedDataURL(fo, { maxDim: 1200, quality: 0.72, whiteBg: true });
+                  } else {
+                      // キャラクターアイコン等: 透明部分を白で合成してJPEG
+                      dataUrl = await convertBlobToCompressedDataURL(fo, { maxDim: 512, quality: 0.75, whiteBg: true });
+                  }
+                  imageDataUrlMap.set(ip, dataUrl);
+              })(key, fileObject, imagePath));
           }
           await Promise.all(conversions);
 
@@ -3387,9 +3397,21 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
       }
   }
 
-  function convertBlobToCompressedDataURL(blob) {
-      // Convert Blob -> compressed (lossy) DataURL.
-      // Note: Uses WebP when available (supports alpha), otherwise falls back.
+  function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error('Failed to read blob'));
+          reader.readAsDataURL(blob);
+      });
+  }
+
+  function convertBlobToCompressedDataURL(blob, options = {}) {
+      // options: { maxDim, quality, whiteBg }
+      // maxDim: null = auto (256 for small icons, 512 for others), number = override
+      // quality: JPEG quality (0-1), default 0.75
+      // whiteBg: if true, composite onto white and always output JPEG (for opaque images like backgrounds)
+      const { maxDim: maxDimOverride = null, quality = 0.75, whiteBg = false } = options;
       return new Promise((resolve, reject) => {
           try {
               const reader = new FileReader();
@@ -3398,37 +3420,43 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
                   const img = new Image();
                   img.onload = () => {
                       try {
-                          // Heuristic downscale: icons stay small, others limited by max dimension
-                          const maxDim = (img.width <= 256 && img.height <= 256) ? 256 : 800;
+                          const autoMaxDim = (img.width <= 256 && img.height <= 256) ? 256 : 512;
+                          const maxDim = maxDimOverride ?? autoMaxDim;
                           const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
                           const w = Math.max(1, Math.round(img.width * scale));
                           const h = Math.max(1, Math.round(img.height * scale));
 
-                          const canvas = document.createElement('canvas');
-                          canvas.width = w;
-                          canvas.height = h;
-                          const ctx = canvas.getContext('2d', { alpha: true });
-                          ctx.imageSmoothingEnabled = true;
-                          ctx.imageSmoothingQuality = 'high';
-                          ctx.drawImage(img, 0, 0, w, h);
-
-                          // Use PNG for images with transparency (alpha), JPEG for opaque images.
-                          // Avoids WebP which is not supported in data URIs on iOS Safari.
-                          const imageData = ctx.getImageData(0, 0, w, h);
+                          // Check for alpha by drawing on a temporary canvas first
+                          const tmpCanvas = document.createElement('canvas');
+                          tmpCanvas.width = w;
+                          tmpCanvas.height = h;
+                          const tmpCtx = tmpCanvas.getContext('2d', { alpha: true });
+                          tmpCtx.imageSmoothingEnabled = true;
+                          tmpCtx.imageSmoothingQuality = 'high';
+                          tmpCtx.drawImage(img, 0, 0, w, h);
+                          const imageData = tmpCtx.getImageData(0, 0, w, h);
                           const hasAlpha = imageData.data.some((v, i) => i % 4 === 3 && v < 255);
+
                           let out = '';
-                          if (hasAlpha) {
-                              try { out = canvas.toDataURL('image/png'); } catch (_e) { out = ''; }
+                          if (!whiteBg && hasAlpha) {
+                              // 透明ピクセルあり: PNG で保持（透明アイコン等）
+                              try { out = tmpCanvas.toDataURL('image/png'); } catch (_e) { out = ''; }
                           } else {
-                              try { out = canvas.toDataURL('image/jpeg', 0.85); } catch (_e) { out = ''; }
+                              // 不透明 or 白背景指定: 白背景 JPEG
+                              const canvas = document.createElement('canvas');
+                              canvas.width = w;
+                              canvas.height = h;
+                              const ctx = canvas.getContext('2d', { alpha: false });
+                              ctx.imageSmoothingEnabled = true;
+                              ctx.imageSmoothingQuality = 'high';
+                              ctx.fillStyle = '#ffffff';
+                              ctx.fillRect(0, 0, w, h);
+                              ctx.drawImage(img, 0, 0, w, h);
+                              try { out = canvas.toDataURL('image/jpeg', quality); } catch (_e) { out = ''; }
                           }
-                          if (!out || out === 'data:,') {
-                              // Fallback: original (already a dataURL)
-                              out = srcDataUrl;
-                          }
+                          if (!out || out === 'data:,') out = srcDataUrl;
                           resolve(out);
                       } catch (e) {
-                          // If canvas conversion fails, fall back to original DataURL
                           resolve(srcDataUrl);
                       }
                   };
