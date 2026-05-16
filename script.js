@@ -1042,7 +1042,7 @@
           if (!characterSettings[speaker]) characterSettings[speaker] = { displayName: speaker, icon: null, expressions: {}, color: '#000000', customTextColor: null, forceNarration: false, isNew: true };
           characterSettings[speaker].icon = dataUrl;
           const uploadKey = characterSettings[speaker].isNew ? `newchar_${speaker}` : speaker;
-          uploadedFiles[uploadKey] = file;
+          uploadedFiles[uploadKey] = new File([await file.arrayBuffer()], file.name, { type: file.type });
           renderLog();
       } catch (error) { console.error(`Error processing default icon for ${speaker}:`, error); alert(`アイコン読込エラー: ${error.message}`); if (imgPreview && characterSettings[speaker]?.icon) imgPreview.src = characterSettings[speaker].icon; else if (imgPreview) imgPreview.src = PLACEHOLDER_ICON_URL.replace('64x64', '40x40'); }
       finally { if (event.target) event.target.value = null; }
@@ -1068,7 +1068,7 @@
                expressionAliasMap[currentSpeaker][expressionName] = `emote_${nextExpressionAliasId++}`;
            }
 
-           const uploadKey = `exp_${currentSpeaker}_${expressionName}`; uploadedFiles[uploadKey] = file;
+           const uploadKey = `exp_${currentSpeaker}_${expressionName}`; uploadedFiles[uploadKey] = new File([await file.arrayBuffer()], file.name, { type: file.type });
            if (nameInput) nameInput.value = '';
            const expressionListDiv = document.getElementById(`expressions-${uniqueSpeakerIdSuffix}`)?.querySelector('.space-y-1');
            if (expressionListDiv) populateExpressionList(expressionListDiv, currentSpeaker);
@@ -2200,7 +2200,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
               }
           }
           displayLogData.splice(insertAtIndex, 0, newImageEntry);
-          uploadedFiles[imageId] = file;
+          uploadedFiles[imageId] = new File([await file.arrayBuffer()], file.name, { type: file.type });
 
           const newElement = createInsertedImageElement(newImageEntry);
           if (newElement) {
@@ -2361,7 +2361,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
           const logItem = displayLogData[messageIndex];
           logItem.iconKey = 'override'; logItem.overrideIconSrc = dataUrl;
           const uploadKey = `icon_msg_${targetMessageId}`;
-          uploadedFiles[uploadKey] = file;
+          uploadedFiles[uploadKey] = new File([await file.arrayBuffer()], file.name, { type: file.type });
 
           const messageElement = logDisplayDiv.querySelector(`.message-item[data-item-id="${targetMessageId}"]`);
           if (messageElement) {
@@ -2645,7 +2645,7 @@ if (changeTabBtn) advancedActionButtonContainer.appendChild(changeTabBtn);
         const dataUrl = await readFileAsDataURL(file);
         customizationSettings.backgroundImage = dataUrl;
         customizationSettings.backgroundImageFileName = file.name;
-        uploadedFiles[BACKGROUND_IMAGE_KEY] = file;
+        uploadedFiles[BACKGROUND_IMAGE_KEY] = new File([await file.arrayBuffer()], file.name, { type: file.type });
         backgroundImagePreview.src = dataUrl;
         backgroundImagePreview.classList.add('has-image');
         applyCustomization();
