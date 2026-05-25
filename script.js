@@ -4058,11 +4058,11 @@ div.icon.export { background-size: cover; background-position: 50% 0%; backgroun
 .heading-item.export.level-5 { font-size: 0.95em; margin-top: 6px; padding-bottom: 2px; font-weight: normal; color: #666; }
 .heading-item.export.level-6 { font-size: 0.9em; margin-top: 5px; padding-bottom: 1px; font-weight: normal; color: #777; }
 ${!isSingleFileHtml ? `
-.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; max-height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; padding: 10px; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+.export-headings-nav { position: fixed; left: -210px; top: 10px; width: 200px; height: calc(100vh - 20px); overflow: visible; background: #f9f9f9; border: 1px solid #ddd; border-left:none; border-radius: 0 5px 5px 0; z-index: 1000; font-size: 0.9em; transition: left 0.3s ease, box-shadow 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
 .export-headings-nav.open { left: 0px !important; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
 .export-headings-nav button#export-toggle-headings-nav { position: absolute; left: 100%; top: 0; background: #3498db; color: white; border: none; padding: 10px 5px; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.8em; writing-mode: vertical-rl; text-orientation: mixed; z-index:1; transition: background-color 0.2s; }
 .export-headings-nav button#export-toggle-headings-nav:hover { background: #2980b9; }
-.export-headings-nav .nav-content { display: flex; flex-direction: column; background: #f9f9f9; border: 1px solid #ddd; border-left: none; border-radius: 0 0 5px 5px; padding: 8px 10px; max-height: calc(100vh - 60px); overflow-y: auto; width: 200px; box-shadow: 2px 2px 8px rgba(0,0,0,0.15); }
+.export-headings-nav .nav-content { padding: 8px 10px; overflow-y: auto; flex-grow: 1; }
 .export-headings-nav .nav-content h5 { margin: 0 0 6px 0; font-size: 0.95em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
 .export-headings-nav .nav-content a { text-decoration: none; color: #337ab7; padding: 4px 0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; font-size: 0.92em; }
 .export-headings-nav .nav-content a:hover { color: #23527c; background: #eee; }
