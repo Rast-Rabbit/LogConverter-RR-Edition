@@ -96,6 +96,7 @@
   const cocofoliaFileInput = document.getElementById('cocofolia-log-input');
   const udonariumFileInput = document.getElementById('udonarium-log-input');
   const tekeyFileInput = document.getElementById('tekey-log-input');
+  const cocofoliaJsonFileInput = document.getElementById('cocofolia-json-input');
   const projectLoadInput = document.getElementById('project-load-input');
   const fileInfoSpan = document.getElementById('file-info');
   const projectLoadInfoSpan = document.getElementById('project-load-info');
@@ -291,6 +292,7 @@
       if (cocofoliaFileInput) cocofoliaFileInput.value = null;
       if (udonariumFileInput) udonariumFileInput.value = null;
       if (tekeyFileInput) tekeyFileInput.value = null;
+      if (cocofoliaJsonFileInput) cocofoliaJsonFileInput.value = null;
       resetCustomizationDefaults();
       updateCustomizationUI();
   }
@@ -615,6 +617,174 @@
 
   // ==================== / ユドナリウムZIPインポート ====================
 
+  // ==================== ココフォリアJSON(ルームデータ)インポート ====================
+  // 公式ドキュメント: https://docs.ccfolia.com/developer-api/message-logs-json
+  // { messages: [{ name, color, text, type, extend, edited, channel, channelName, createdAt, updatedAt, iconImage }], images: { [id]: dataURL } }
+
+  async function handleCocofoliaJsonFileSelect(event) {
+      const file = event.target.files?.[0];
+      if (!file) { fileInfoSpan.textContent = 'ファイルが選択されていません'; return; }
+      if (!file.name.toLowerCase().endsWith('.json')) {
+          alert('ココフォリアのルームデータJSONファイルを選択してください。');
+          fileInfoSpan.textContent = 'JSONファイルを選択してください';
+          event.target.value = null; return;
+      }
+      if (!startFileProcessing(file, "ココフォリアJSON")) { event.target.value = null; return; }
+      let success = false; let errorMessage = '';
+      try {
+          const fileContent = await readFileAsText(file);
+          if (!fileContent || fileContent.trim().length === 0) throw new Error("ファイルが空か、内容を読み取れませんでした。");
+          let json;
+          try { json = JSON.parse(fileContent); } catch (e) { throw new Error("JSONの解析に失敗しました。ココフォリアのルームデータ形式か確認してください。"); }
+          if (!json || !Array.isArray(json.messages)) throw new Error("ココフォリアのルームデータJSONではありません（messages 配列が見つかりません）。");
+
+          const { messages, characterDataByName } = parseCocofoliaJson(json);
+
+          // キャラクター設定を事前投入（ユドナリウム取込と同様の流れ）
+          for (const [name, charData] of characterDataByName) {
+              if (!characterSettings[name]) {
+                  characterSettings[name] = {
+                      displayName: name,
+                      icon: charData.defaultIcon,
+                      expressions: {},
+                      alignment: 'left',
+                      color: charData.color,
+                      customTextColor: null,
+                      forceNarration: false,
+                      isNew: false
+                  };
+                  if (charData.defaultIcon) {
+                      uploadedFiles[name] = await fetch(charData.defaultIcon).then(r => r.blob());
+                  }
+              } else {
+                  if (!characterSettings[name].icon && charData.defaultIcon) {
+                      characterSettings[name].icon = charData.defaultIcon;
+                      const uploadKey = characterSettings[name].isNew ? `newchar_${name}` : name;
+                      uploadedFiles[uploadKey] = await fetch(charData.defaultIcon).then(r => r.blob());
+                  }
+                  if (!characterSettings[name].color || characterSettings[name].color === '#000000') {
+                      characterSettings[name].color = charData.color;
+                  }
+              }
+              const setting = characterSettings[name];
+              for (const [, expInfo] of charData.expressionsByHash) {
+                  if (expInfo.dataUrl && !setting.expressions[expInfo.label]) {
+                      setting.expressions[expInfo.label] = expInfo.dataUrl;
+                      const expKey = `exp_${name}_${expInfo.label}`;
+                      uploadedFiles[expKey] = await fetch(expInfo.dataUrl).then(r => r.blob());
+                      if (!expressionAliasMap[name]) expressionAliasMap[name] = {};
+                      if (!expressionAliasMap[name][expInfo.label]) {
+                          expressionAliasMap[name][expInfo.label] = `emote_${nextExpressionAliasId++}`;
+                      }
+                  }
+              }
+          }
+          // ステータス変更等（type:"system"）は既存の予約話者 'system' 判定（initializeAfterParse内）に委ねる。
+          // 追加のcharacterSettings登録は行わない（CCfoliaのHTMLログ出力と同じ挙動）。
+
+          await new Promise(resolve => setTimeout(resolve, 50));
+          initializeAfterParse(messages);
+
+          // iconImage(ID)に基づいて iconKey を後付け設定
+          displayLogData.forEach(item => {
+              if (item.type !== 'message') return;
+              const imageId = item._ccfoliaIconId;
+              delete item._ccfoliaIconId;
+              if (!imageId) return;
+              const charData = characterDataByName.get(item.speaker);
+              if (!charData || imageId === charData.defaultHash) return; // デフォルトアイコンはそのまま
+              const expInfo = charData.expressionsByHash.get(imageId);
+              if (expInfo?.label && characterSettings[item.speaker]?.expressions?.[expInfo.label]) {
+                  item.iconKey = expInfo.label;
+              }
+          });
+          renderLog();
+
+          success = true;
+      } catch (error) { errorMessage = error.message || '不明なエラー'; success = false; }
+      finally { endFileProcessing(file, success, errorMessage); }
+  }
+
+  // メインパーサー（発言者ごとにキャラクター情報を構築）
+  function parseCocofoliaJson(json) {
+      const imagesMap = json.images || {};
+
+      // ── Step 1: createdAt昇順で安定ソート ──
+      const rawMessages = json.messages
+          .map((m, idx) => ({ m, idx }))
+          .sort((a, b) => (a.m.createdAt - b.m.createdAt) || (a.idx - b.idx))
+          .map(({ m }) => m);
+
+      // ── Step 2: 発言者ごとの色・立ち絵使用状況を集計（type:"system"は除外＝予約話者'system'として別扱い）──
+      const speakerInfo = new Map(); // name → { iconUsage: Map<id,count>, iconOrder: string[], lastColor }
+      for (const m of rawMessages) {
+          if (m.type === 'system') continue;
+          const name = m.name || '不明';
+          if (!speakerInfo.has(name)) {
+              speakerInfo.set(name, { iconUsage: new Map(), iconOrder: [], lastColor: m.color || '#000000' });
+          }
+          const si = speakerInfo.get(name);
+          if (m.color) si.lastColor = m.color; // 「最後の発言」のcolorを採用
+          const iconId = m.iconImage || null;
+          if (iconId) {
+              if (!si.iconUsage.has(iconId)) { si.iconUsage.set(iconId, 0); si.iconOrder.push(iconId); }
+              si.iconUsage.set(iconId, si.iconUsage.get(iconId) + 1);
+          }
+      }
+
+      // ── Step 3: 発言者ごとにキャラクターデータを構築 ──
+      // characterDataByName: name → { defaultHash, defaultIcon, expressionsByHash: Map<id,{label,dataUrl}>, color }
+      const characterDataByName = new Map();
+      for (const [name, si] of speakerInfo) {
+          // デフォルトアイコン: 最頻出の立ち絵（同数タイは初出順で先頭を採用）
+          let defaultHash = null, maxCount = -1;
+          for (const id of si.iconOrder) {
+              const count = si.iconUsage.get(id);
+              if (count > maxCount) { maxCount = count; defaultHash = id; }
+          }
+          // 残りの立ち絵は「立ち絵1」「立ち絵2」…として差分登録
+          const expressionsByHash = new Map();
+          let autoCounter = 1;
+          for (const id of si.iconOrder) {
+              if (id === defaultHash) continue;
+              expressionsByHash.set(id, { label: `立ち絵${autoCounter++}`, dataUrl: imagesMap[id] || null });
+          }
+          characterDataByName.set(name, {
+              defaultHash,
+              defaultIcon: defaultHash ? (imagesMap[defaultHash] || null) : null,
+              expressionsByHash,
+              color: si.lastColor || '#000000'
+          });
+      }
+
+      // ── Step 4: メッセージ配列を構築 ──
+      const messages = rawMessages.map(m => {
+          const isSystem = m.type === 'system'; // ステータス変更等。name も常に "system"
+          const speaker = isSystem ? 'system' : (m.name || '不明');
+          const tab = m.channelName || m.channel || 'main';
+          let text = m.text || '';
+          // ダイスロール等: extend.roll があれば発言文に結果を結合する（CCfoliaのHTML出力と同じ見た目）
+          const roll = m.extend?.roll;
+          if (!isSystem && roll?.result) {
+              text = text ? `${text} ${roll.result}` : roll.result;
+          }
+          // type:"note"（シナリオ本文）は現時点でサンプルが無いため、通常発言と同様に扱う
+          return {
+              type: 'message',
+              id: generateUniqueId('ccj'),
+              tab,
+              speaker,
+              color: m.color || '#000000',
+              message: escapeHtml(text).replace(/\n/g, '<br>'),
+              _ccfoliaIconId: isSystem ? null : (m.iconImage || null)
+          };
+      });
+
+      return { messages, characterDataByName };
+  }
+
+  // ==================== / ココフォリアJSON(ルームデータ)インポート ====================
+
   async function handleProjectLoadFile(event) {
       if (isProcessingFile) { console.warn("Processing already in progress."); event.target.value = null; return; }
       const file = event.target.files?.[0];
@@ -711,7 +881,7 @@
        disableControls(); updateHeadingsNav(); closeHeadingsNav();
        if (iconChangeInput) iconChangeInput.value = null; if (insertImageInput) insertImageInput.value = null;
        if (backgroundImageInput) backgroundImageInput.value = null;
-       if (cocofoliaFileInput) cocofoliaFileInput.value = null; if (udonariumFileInput) udonariumFileInput.value = null; if (tekeyFileInput) tekeyFileInput.value = null; if (projectLoadInput) projectLoadInput.value = null;
+       if (cocofoliaFileInput) cocofoliaFileInput.value = null; if (udonariumFileInput) udonariumFileInput.value = null; if (tekeyFileInput) tekeyFileInput.value = null; if (cocofoliaJsonFileInput) cocofoliaJsonFileInput.value = null; if (projectLoadInput) projectLoadInput.value = null;
        closeIconDropdown(); closeModal(genericModal);
   }
 
@@ -4238,6 +4408,7 @@ body.rr-site-dark .export-headings-nav button#export-toggle-headings-nav { backg
       cocofoliaFileInput.addEventListener('change', handleCocofoliaFileSelect);
       if (udonariumFileInput) udonariumFileInput.addEventListener('change', handleUdonariumFileSelect);
       tekeyFileInput.addEventListener('change', handleTekeyFileSelect);
+      if (cocofoliaJsonFileInput) cocofoliaJsonFileInput.addEventListener('change', handleCocofoliaJsonFileSelect);
       projectLoadInput.addEventListener('change', handleProjectLoadFile);
       settingsTabButton.addEventListener('click', () => switchSettingsTab('tab'));
       characterTabButton.addEventListener('click', () => switchSettingsTab('character'));
